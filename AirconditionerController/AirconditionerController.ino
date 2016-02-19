@@ -22,6 +22,14 @@ ESP8266WiFiMulti WiFiMulti;
 #define OLED_RESET -1  //board has reset line to screen on pin2
 Adafruit_SSD1306 display(OLED_RESET);
 
+const unsigned char PROGMEM WaterIcon [] = {
+0x10, 0x38, 0x38, 0x7C, 0xFE, 0xFE, 0xFE, 0x7C, 
+};
+
+const unsigned char PROGMEM FanIcon [] = {
+0xC3, 0xE7, 0x6E, 0x20, 0x04, 0x76, 0xE7, 0xC3, 
+};
+
 //Temp/Humidity Sensor (i2c)
 #include "Adafruit_HDC1000.h"
 Adafruit_HDC1000 hdc = Adafruit_HDC1000();
