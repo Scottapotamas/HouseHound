@@ -59,6 +59,7 @@ int controlMode     = 0;
 
 const int colPos = 64; //x position of second column start
 
+
 void initSensors() {
   if (!hdc.begin()) {
     Serial.println("Couldn't find HDC1000 sensor!");
@@ -85,7 +86,7 @@ void setup() {
     display.begin(SSD1306_SWITCHCAPVCC, 0x3D);  // initialize with the I2C addr 0x3C (for the 128x32)
     display.clearDisplay();
     
-    displayBootScreen(" Starting Sensors   ");
+    displayBootScreen("  Starting Sensors  ");
 
 
     initSensors();
@@ -117,7 +118,7 @@ void loop() {
     getExternalSensors();       //TODO get data from OPENHAB
     getInternetSensors();       //TODO get weather data from online
 
-    // displayWeatherInfo();
+    displayWeatherInfo();
     displayAirconInfo();        //TODO
     displayStatusLED();         //TODO
 
@@ -140,7 +141,7 @@ void displayBootScreen(String subText) {
 
     if(subText != "") {
         display.setTextSize(1);
-        display.setCursor(0,50);
+        display.setCursor(10,50);
         display.print(subText);
     }
 
@@ -152,8 +153,8 @@ void displayWeatherInfo()
 {
     display.setTextColor(WHITE);
 
-    drawWeatherDataBlock(32,1,2, "Indoor", tempLocal, humidityLocal, baroLocal);
-    drawWeatherDataBlock(32,40,1, "Outdoor", tempLocal2, humidityLocal, baroLocal);
+    drawWeatherDataBlock(3,2,2, "Indoor", tempLocal, humidityLocal, baroLocal);
+    drawWeatherDataBlock(3,41,1, "Outdoor", tempLocal2, humidityLocal, baroLocal);
     
     //TODO draw internet weather
     //drawWeatherDataBlock(32,40,1, "Internet", tempLocal2, humidityLocal, baroLocal);
@@ -196,22 +197,86 @@ void drawWeatherDataBlock(int x, int y, int dataLevel, String title, float temp,
 
 void displayAirconInfo() 
 {
-    display.setCursor(colPos,0);
-    display.print("%-20s", "initialization...");
+    display.setTextColor(WHITE);
+    display.setTextSize(2);
+    
+    int x = 75;
+    int y = 3;
+
+    switch(controlMode)
+    {
+        case 0:     //uninitalised
+            display.setCursor(x,y);
+            display.println("WAIT");
+        break;
+
+        case 1:     //off
+            display.setCursor(x,y);
+            display.println(" OFF");
+        break;
+
+        case 2:     //manual fan
+            display.setCursor(x,y);
+            display.println(" FAN");
+        break;
+
+        case 3:     //manual fan+water
+            display.setCursor(x,y);
+            display.println("COOL");
+        break;
+
+        case 4:     //auto
+            display.setCursor(x,y);
+            display.println("AUTO");
+        break;
+
+        case 5:     //web controlled
+            display.setCursor(x,y);
+            display.println(" WEB");
+        break;        
+
+        default:
+
+        break;
+    }
+
 
     display.setTextSize(1);
-    display.setTextColor(WHITE);
-    display.setCursor(colPos,10);
-    display.println("MODE");
-    
-    display.setCursor(colPos,8);
-    display.println("FAN");
+    x += 10;
+    y += 24;
 
-    display.setCursor(colPos,16);
-    display.println("WATER");
-    
-    display.setCursor(colPos,48);
-    display.println("TIME");
+    if(fanSpeed < 1)    //fan is off
+    {
+        display.drawBitmap(x, y, FanIcon, 8, 8, WHITE);
+        display.setCursor(x+10,y);
+        display.println("OFF ");
+    }
+    else                //fan is on
+    {
+        display.drawBitmap(x, y, FanIcon, 8, 8, WHITE);
+        display.setCursor(x+10,y);
+        display.print(fanSpeed);    display.print("%");
+    }
+
+    y += 10;
+    if(waterPumpState == 0) //pump is off
+    {
+        display.drawBitmap(x, y, WaterIcon, 8, 8, WHITE);
+        display.setCursor(x+10,y);
+        display.println("OFF");
+    }
+    else        //pump is on
+    {
+        display.drawBitmap(x, y, WaterIcon, 8, 8, WHITE);
+        display.setCursor(x+10,y);
+        display.println(" ON");
+    }
+
+    x -= 0;
+    y += 20;
+    display.setCursor(x,y);
+    display.println("12:34");
+
 }
 
 void displayStatusLED() 
@@ -224,10 +289,10 @@ void displayStatusLED()
 
 void getLocalSensors() 
 {
-    tempLocal = hdc.readTemperature(); 
-    tempLocal2 = bmp.readTemperature();
-    humidityLocal = hdc.readHumidity();  
-    baroLocal = bmp.readPressure() / 100; 
+    tempLocal       = hdc.readTemperature(); 
+    tempLocal2      = bmp.readTemperature();
+    humidityLocal   = hdc.readHumidity();  
+    baroLocal       = bmp.readPressure() / 100;   //convert to hPa 
 }
 
 void getExternalSensors() {
@@ -246,47 +311,51 @@ void getInternetTime() {
 }
 
 
-void getWebData() {
+void getWebData() 
+{
+    // wait for WiFi connection
+    if((WiFiMulti.run() == WL_CONNECTED)) 
+    {
 
-// wait for WiFi connection
-if((WiFiMulti.run() == WL_CONNECTED)) {
+        HTTPClient http;
 
-    HTTPClient http;
+        USE_SERIAL.print("[HTTP] begin...\n");
+        // configure traged server and url
+        //http.begin("192.168.1.12", 443, "/test.html", true, "7a 9c f4 db 40 d3 62 5a 6e 21 bc 5c cc 66 c8 3e a1 45 59 38"); //HTTPS
+        http.begin("192.168.1.68", 80, "/"); //HTTPS
 
-    USE_SERIAL.print("[HTTP] begin...\n");
-    // configure traged server and url
-    //http.begin("192.168.1.12", 443, "/test.html", true, "7a 9c f4 db 40 d3 62 5a 6e 21 bc 5c cc 66 c8 3e a1 45 59 38"); //HTTPS
-    http.begin("192.168.1.68", 80, "/"); //HTTPS
+        USE_SERIAL.print("[HTTP] GET...\n");
+        // start connection and send HTTP header
+        int httpCode = http.GET();
+        if(httpCode) 
+        {
+            // HTTP header has been send and Server response header has been handled
+            USE_SERIAL.printf("[HTTP] GET... code: %d\n", httpCode);
 
-    USE_SERIAL.print("[HTTP] GET...\n");
-    // start connection and send HTTP header
-    int httpCode = http.GET();
-    if(httpCode) {
-        // HTTP header has been send and Server response header has been handled
-        USE_SERIAL.printf("[HTTP] GET... code: %d\n", httpCode);
+            // file found at server
+            if(httpCode == 200) {
+                String payload = http.getString();
+                USE_SERIAL.println(payload);
 
-        // file found at server
-        if(httpCode == 200) {
-            String payload = http.getString();
-            USE_SERIAL.println(payload);
+                display.setTextSize(2);
+                display.setTextColor(WHITE);
+                display.setCursor(0,48);
+                display.println("Get good!");
+                //display.println(payload);
+                display.display();
+            }
 
+        } 
+        else 
+        {
+            USE_SERIAL.print("[HTTP] GET... failed, no connection or no HTTP server\n");
+            
             display.setTextSize(2);
             display.setTextColor(WHITE);
             display.setCursor(0,48);
-            display.println("Get good!");
-            //display.println(payload);
+            display.println("Get failed");
             display.display();
-            
         }
-    } else {
-        USE_SERIAL.print("[HTTP] GET... failed, no connection or no HTTP server\n");
-        
-        display.setTextSize(2);
-        display.setTextColor(WHITE);
-        display.setCursor(0,48);
-        display.println("Get failed");
-        display.display();
     }
-}
 
 }
