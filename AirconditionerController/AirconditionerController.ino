@@ -8,12 +8,29 @@
 #include <SPI.h>
 #include <Wire.h>
 
+//ESP Wifi Stuff
 #include <ESP8266WiFi.h>
-#include <ESP8266WiFiMulti.h>
-#include <ESP8266HTTPClient.h>
-ESP8266WiFiMulti WiFiMulti;
+#include <ESP8266WebServer.h>
+#include <ESP8266SSDP.h>
 
-#define USE_SERIAL Serial
+#define wifi_ssid "Raptor Jnr"
+#define wifi_password "bicycl35ar3funt0rid3"
+
+WiFiClient espClient;
+ESP8266WebServer HTTP(80);
+
+int wifiAttempts = 0;       //track connection attempts to graciously fallback to local only operation
+
+// MQTT
+#include <PubSubClient.h>       
+PubSubClient client(espClient);
+
+#define mqtt_server "YOUR_MQTT_SERVER_HOST"
+#define mqtt_user "your_username"
+#define mqtt_password "your_password"
+
+#define humidity_topic "sensor/humidity"
+#define temperature_topic "sensor/temperature"
 
 
 // Display (i2c)
@@ -60,59 +77,136 @@ int controlMode     = 0;
 const int colPos = 64; //x position of second column start
 
 
-void initSensors() {
-  if (!hdc.begin()) {
-    Serial.println("Couldn't find HDC1000 sensor!");
-  }
+void initSensors() 
+{
+    displayBootScreen("  Starting Sensors  ");
 
-  if (!bmp.begin()) {  
-    Serial.println("Could not find BMP280 sensor!");
-  }
+    if (!hdc.begin()) 
+    {
+        Serial.println("Couldn't find HDC1000 sensor!");
+    }
+
+    if (!bmp.begin()) 
+    {  
+        Serial.println("Could not find BMP280 sensor!");
+    }
 }
 
 void initPins() {
+    displayBootScreen("  Initialising I/O  ");
 
     //fan and water control goes here
 
 }
 
+void setupSSDP()  //shared service discovery protocol
+{
+    displayBootScreen(" Starting Web Server");
+
+    HTTP.on("/", HTTP_GET, [](){
+      HTTP.send(200, "text/plain", "Hello World!");
+    });
+
+    HTTP.on("/index.html", HTTP_GET, [](){
+      HTTP.send(200, "text/plain", "Index goes here!");
+    });
+
+    HTTP.on("/description.xml", HTTP_GET, [](){
+      SSDP.schema(HTTP.client());
+    });
+
+    HTTP.begin();
+
+    displayBootScreen("Starting SSDP Server");
+
+    SSDP.setSchemaURL("description.xml");
+    SSDP.setHTTPPort(80);
+    SSDP.setName("Brivis Evaporative Aircon");
+    SSDP.setSerialNumber("001788102201");
+    SSDP.setURL("index.html");
+    SSDP.setModelName("Brivis Wifi Controller");
+    SSDP.setModelNumber("929000226503");
+    SSDP.setModelURL("http://www.google.com");
+    SSDP.setManufacturer("Scott Rapson");
+    SSDP.setManufacturerURL("http://www.26oclock.com");
+    SSDP.begin();
+
+    //TODO Replace these with something reasonable for the Brivis unit
+
+    displayBootScreen("SSDP Server Started");
+}
+
+void setupWiFi() 
+{
+    displayBootScreen("  Connect to Wifi ");
+    display.setTextSize(1);
+    display.setCursor(20,55);
+    display.print("SSID: ");
+    display.print(wifi_ssid);
+    display.display();
+    delay(500);
+
+    if(wifiAttempts == 0) 
+    {
+        WiFi.begin(wifi_ssid, wifi_password);
+    }
+
+
+    if(WiFi.status() == WL_CONNECTED) {
+        //display connection info on screen
+        displayBootScreen("  Connected at IP ");
+        display.setTextSize(1);
+        display.setCursor(20,55);
+        display.print(WiFi.localIP());
+        display.display();
+        //allow user a quick moment to see the IP if they are too lazy/incompetent to do infrastructure level DHCP allocations
+        delay(1000);    
+        return;
+    } 
+    else 
+    {
+        wifiAttempts++;
+        displayBootScreen("  Error! Retrying  ");
+        delay(2000);
+        return setupWiFi();       //woo fake while-loop with recursion!
+    }
+
+}
+
+void setupMQTT()
+{
+    displayBootScreen("  Initiating MQTT   ");
+    client.setServer(mqtt_server, 1883);
+}
+
 void setup() {
 
-    USE_SERIAL.begin(115200);
+    Serial.begin(115200);
    // USE_SERIAL.setDebugOutput(true);
-    USE_SERIAL.println();
+    Serial.println("");
 
     // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
     display.begin(SSD1306_SWITCHCAPVCC, 0x3D);  // initialize with the I2C addr 0x3C (for the 128x32)
     display.clearDisplay();
     
-    displayBootScreen("  Starting Sensors  ");
-
-
     initSensors();
-
-    displayBootScreen("  Initialising I/O  ");
     initPins();
+
     strip.begin();
 
-    displayBootScreen(" Connecting to Wifi ");
+    setupWiFi();
+    setupSSDP();
+    //setupMQTT();
 
-    for(uint8_t t = 4; t > 0; t--) {
-        USE_SERIAL.printf("[SETUP] WAIT %d...\n", t);
-        USE_SERIAL.flush();
-        delay(1000);
-    }
-
-    WiFiMulti.addAP("Raptor Jnr", "bicycl35ar3funt0rid3");
- 
-    displayBootScreen("        Done        ");
-    delay(1000);
+    //done!
 }
 
 void loop() {
     
     display.clearDisplay();
-
+    
+    HTTP.handleClient();        //SSDP etc
+    //mqttLoop();                 //MQTT code is self contained, this runs the loop level code it requires
 
     getLocalSensors();
     getExternalSensors();       //TODO get data from OPENHAB
@@ -126,10 +220,13 @@ void loop() {
     //TODO: Decouple draw with loop, state machine to wait between draws
 
 
-    display.display();
+    display.display();      //draw once per loop. We don't do this per function to prevent tearing style updates
 
     delay(4000);
 }
+
+// ------ OLED DISPLAY FUNCTIONS  ------------
+
 
 void displayBootScreen(String subText) {
     display.clearDisplay();
@@ -141,7 +238,7 @@ void displayBootScreen(String subText) {
 
     if(subText != "") {
         display.setTextSize(1);
-        display.setCursor(10,50);
+        display.setCursor(5,45);
         display.print(subText);
     }
 
@@ -182,7 +279,7 @@ void drawWeatherDataBlock(int x, int y, int dataLevel, String title, float temp,
     if(dataLevel >= 1) 
     {
         display.setTextSize(1);
-        display.setCursor(x+28, y+16);
+        display.setCursor(x+29, y+16);
         display.print(humidityLocal, 0); display.print("%");
     }
 
@@ -272,8 +369,8 @@ void displayAirconInfo()
         display.println(" ON");
     }
 
-    x -= 0;
-    y += 20;
+    x -= 2;
+    y += 19;
     display.setCursor(x,y);
     display.println("12:34");
 
@@ -286,6 +383,9 @@ void displayStatusLED()
     strip.show(); // This sends the updated pixel color to the hardware.
 }
 
+
+
+// ------ AQUISITION OF SENSOR DATA  ------------
 
 void getLocalSensors() 
 {
@@ -311,51 +411,72 @@ void getInternetTime() {
 }
 
 
-void getWebData() 
+
+
+// ------  MQTT CONNECTION HANDLING AND MESSAGING ------------
+
+
+void mqttReconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Attempt to connect
+    // If you do not want to use a username and password, change next line to
+    // if (client.connect("ESP8266Client")) {
+    if (client.connect("ESP8266Client", mqtt_user, mqtt_password)) {
+      Serial.println("connected");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+
+bool checkBound(float newValue, float prevValue, float maxDiff) {
+  return newValue < prevValue - maxDiff || newValue > prevValue + maxDiff;
+}
+
+
+long lastMsg = 0;
+float temp = 0.0;
+float hum = 0.0;
+float diff = 1.0;
+
+void mqttLoop() 
 {
-    // wait for WiFi connection
-    if((WiFiMulti.run() == WL_CONNECTED)) 
+    if (!client.connected()) {
+        mqttReconnect();
+    }
+    client.loop();
+
+
+    long now = millis();
+    if (now - lastMsg > 1000) 
     {
+        lastMsg = now;
 
-        HTTPClient http;
+        float newTemp = hdc.readTemperature();
+        float newHum = hdc.readHumidity();
 
-        USE_SERIAL.print("[HTTP] begin...\n");
-        // configure traged server and url
-        //http.begin("192.168.1.12", 443, "/test.html", true, "7a 9c f4 db 40 d3 62 5a 6e 21 bc 5c cc 66 c8 3e a1 45 59 38"); //HTTPS
-        http.begin("192.168.1.68", 80, "/"); //HTTPS
-
-        USE_SERIAL.print("[HTTP] GET...\n");
-        // start connection and send HTTP header
-        int httpCode = http.GET();
-        if(httpCode) 
+        if (checkBound(newTemp, temp, diff)) 
         {
-            // HTTP header has been send and Server response header has been handled
-            USE_SERIAL.printf("[HTTP] GET... code: %d\n", httpCode);
+          temp = newTemp;
+          Serial.print("New temperature:");
+          Serial.println(String(temp).c_str());
+          client.publish(temperature_topic, String(temp).c_str(), true);
+        }
 
-            // file found at server
-            if(httpCode == 200) {
-                String payload = http.getString();
-                USE_SERIAL.println(payload);
-
-                display.setTextSize(2);
-                display.setTextColor(WHITE);
-                display.setCursor(0,48);
-                display.println("Get good!");
-                //display.println(payload);
-                display.display();
-            }
-
-        } 
-        else 
+        if (checkBound(newHum, hum, diff)) 
         {
-            USE_SERIAL.print("[HTTP] GET... failed, no connection or no HTTP server\n");
-            
-            display.setTextSize(2);
-            display.setTextColor(WHITE);
-            display.setCursor(0,48);
-            display.println("Get failed");
-            display.display();
+          hum = newHum;
+          Serial.print("New humidity:");
+          Serial.println(String(hum).c_str());
+          client.publish(humidity_topic, String(hum).c_str(), true);
         }
     }
-
 }
+
+
