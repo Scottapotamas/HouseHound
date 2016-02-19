@@ -12,6 +12,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266SSDP.h>
+#include <ESP8266mDNS.h>
 
 #define wifi_ssid "Raptor Jnr"
 #define wifi_password "bicycl35ar3funt0rid3"
@@ -99,8 +100,8 @@ void initPins() {
 
 }
 
-void setupSSDP()  //shared service discovery protocol
-{
+void setupHTTP() {
+
     displayBootScreen(" Starting Web Server");
 
     HTTP.on("/", HTTP_GET, [](){
@@ -116,7 +117,25 @@ void setupSSDP()  //shared service discovery protocol
     });
 
     HTTP.begin();
+}
 
+void setupMDNS() 
+{
+    displayBootScreen(" Starting mDNS");
+
+    if (!MDNS.begin("brivisevap")) 
+    {
+        displayBootScreen("mDNS Error! Retrying");
+        delay(2000);
+        return setupMDNS();       //woo fake while-loop with recursion!
+    }
+    
+    displayBootScreen("    mDNS started   ");
+    MDNS.addService("http", "tcp", 80);
+}
+
+void setupSSDP()  //shared service discovery protocol
+{
     displayBootScreen("Starting SSDP Server");
 
     SSDP.setSchemaURL("description.xml");
@@ -146,7 +165,7 @@ void setupWiFi()
     display.display();
     delay(500);
 
-    if(wifiAttempts == 0) 
+    if(wifiAttempts == 0)   //TODO do something with timeouts here
     {
         WiFi.begin(wifi_ssid, wifi_password);
     }
@@ -194,8 +213,10 @@ void setup() {
 
     strip.begin();
 
-    setupWiFi();
-    setupSSDP();
+    setupWiFi();    //connect to the existing network
+    setupHTTP();    //web server
+    setupMDNS();    //for brivisevap.local through bonjour
+    setupSSDP();    
     //setupMQTT();
 
     //done!
@@ -305,6 +326,7 @@ void displayAirconInfo()
         case 0:     //uninitalised
             display.setCursor(x,y);
             display.println("WAIT");
+            controlMode++;
         break;
 
         case 1:     //off
