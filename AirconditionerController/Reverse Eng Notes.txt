@@ -1,0 +1,423 @@
+
+# Evaporative Airconditioner Controller replacement/upgrade Project
+
+#Existing controller
+It has buttons for on/off, mode, fan, water pump, timer, and leds above them to denote the status.
+
+The unit connects to the controller with 4 wires.
+GND, 5.7V (why?), the fan and pump control lines. 
+Uses a 5 pin 2.54mm pitch connector, similar to KK, but locking tab in center with no keying.
+
+Pump is 0V, or 1.8V when on
+Fan is pulled high at off (to 5.7V) 
+Fanspeed is controlled with a voltage output 
+	(inversely proportional to fanspeed) between 1.1v (slow) and 3.2v (pretty fast, adjustable on PCB with pot)
+
+# Hardware
+
+We use the ESP8266 for wifi control and as the microcontroller for this airconditioner controller. 
+I will be using one of the adafruit HUZZAH boards which includes a 3v3 reg, reset button and broken out pins to make life a little easier.
+
+# Sensing
+Temp+Humiditiy sensor on i2c
+Barometric pressure on i2c
+
+# Output
+2.7" OLED monochrome display driven over SPI or i2c or parallel (not in this project)
+WS2812 as a status lamp
+
+# Input
+4 buttons - momentary
+
+
+
+To drive the airconditioners, the following is used:
+
+Fan:
+	DAC on the ESP is used with a opamp for level shifting
+	0-3v3 from the ESP analog output, we use a gain of 1.7 to provide a maximum 5.7v output
+
+Water Pump:
+	Driven by a digital IO on the ESP. 
+	LOW = 0V
+	HIGH = 3v3 from ESP -> 1.8. Probably use voltage divider, or a fet if needed.
+
+5.7V is connected to the ESP which has onboard 3v3 regulator.
+
+
+# User Interface
+
+Mode is displayed in the top left of the display	
+
+		Off 			Nothing is happening, idle mode
+		Automatic 		Looks at temperature indoors and outdoors, and controls aircon based on delta.
+		Manual			User controls the unit manually
+
+	Web connected control doesn't have a distinct mode, but just allows an override of the existing mode and settings.
+
+Fan Speed is displayed on the second to bottom line, on the left
+	Has fan symbol, followed by % fan speed.
+		if fan is off, replace % with text OFF
+
+Pump status is displayed on the bottom line, on the left
+	Water drop symbol, followed by text ON, OFF or PRIME
+
+
+
+# Status Lamp
+
+Aircon Off
+	Displays colour wheel set by the temperature delta between inside and outside.
+		ie, the colour is green at equilibrium
+			goes blue when colder outside
+			goes red when warmer outside
+
+Aircon On
+	Fan Only
+		Green solid
+	Water pump only
+		Pulsing Blue
+	Fan with Water
+		Blue solid, gets brighter with higher fan speed
+
+Error
+	Could not connect to wifi
+		Pulsing white light
+
+	Could not find/update NTP time
+		Triple white blink, then wait a bit.
+
+# Behaviour
+
+At startup, connect to the known wifi network. Display IP address on screen for 5 seconds once connected.
+Poll NTP server for most recent time, report status to monitoring sofware as required.
+
+
+
+We have a deadband on the temperature delta between outside and indoors, and make automatic decisions based on season
+
+	Summer
+		if temperature > deadband
+			Do nothing
+		if temperature < deadband
+			Bring colder air into house
+	Winter
+		if temperature > deadband
+			Bring warm air through
+		if temperature < deadband
+			Do nothing
+
+HOT_THRESHOLD_DEGREES	Outside temperature is hotter than inside, threshold
+COLD_THRESHOLD_DEGREES	Outside temperature is colder than inside, threshold
+
+
+Fan Speed will be expressed as a percentage from 0 to 100%
+The function setFanSpeed(int percentage) will calculate the output voltage from a %, to drive the DAC output with a opamp.
+
+Voltage ranges for output as follows
+FAN_SPEED_MIN	3.2
+FAN_SPEED_MAX	1.1
+
+
+
+
+
+
+
+
+
+
+
+
+# Function prototypes
+
+int main () {
+	
+	setupIO();
+	initHardware();
+
+	initWifi();
+	updateTime();
+	initHAB();
+
+	while(1) {
+		main();
+
+	}
+
+	return 0;
+}
+
+
+void setupIO() {
+	//set pinmodes etc
+
+	return;
+}
+
+void initHardware() {
+	//init display
+	//init neopixels
+	//init i2c
+	//contact and check for i2c sensors
+
+	return;
+}
+
+void initWifi() {
+	
+	//attempt to connect to known hotspot
+
+	//confirm connection to network by pinging gateway
+
+	//confirm connection to internet by pinging dns server
+
+	return;
+}
+
+void updateTime() {
+	//contact NTP time server
+
+	//if failed, contact second server
+
+	//set time
+
+	return;
+}
+
+void initHAB() {
+	//setup local HomeAutomation stuff as required
+
+	return;
+}
+
+void loop() {
+
+	//run different speed loops
+	everyLoop();
+
+	if(loopCount == 2) {	//every third loop
+		mediumLoop();
+	}
+
+	if(loopCount == 10) {	//every 10th loop
+		slowLoop();
+	}
+
+	if(long time condition) {	//only occasionally
+		glacialLoop();
+	})
+
+	//reset anything for next loop
+}
+
+void everyLoop() {
+	//read button states
+	//other critical monitoring tasks
+
+	//run through the state machine?
+
+	return;
+}
+
+void mediumLoop() {
+	//update the display
+	//update pixels
+
+	return;
+}
+
+void slowLoop() {
+	//get temperature
+
+	return;
+}
+
+void glacialLoop() {
+	updateTime();
+	checkOnlineWeather();
+
+	return;
+}
+
+void setFanSpeed(int percentage) {
+	//we drive the analog output to set the speed from 3.2 to 1.1V
+
+	float driveVoltage = FAN_VOLTAGE_OFF;	
+
+	//map percentage to voltage between 1.1 and 3.2, inversely proportional
+	//apply gain of 1.7 
+	//desired voltage output
+	//clamp to min/max to prevent damage
+
+	//map voltage output into 10bit
+	//analogWrite(outputVal)
+
+	return;
+}
+
+void setPump(bool enable) {
+	//water pump takes 0 for off, 1.8v for on.
+	
+	//digitalWrite(PUMP_PIN, enable);
+
+	if(fanSpeed > 5) {	//fan on
+		//start the pump or leave it on, log as needed.
+		//state = wetfan;
+	} else {	//fan not running
+		//we are priming the pump first
+		//state = priming;
+	}
+
+	return;
+}
+]
+
+void readSensors() {
+	
+	//get temperature
+
+	//get humidity
+
+	//get barometric pressure
+
+	//push this new data to HAB server
+
+	return;
+}
+
+void getExternalTemp() {
+	//contact HAB server and request a temperature from a different node
+	//save to internal variable
+
+	return;
+}
+
+void checkOnlineWeather() {
+	//contact/poll some service for forcast weather
+	//update structure as required
+
+	return;
+}
+
+
+void drawDisplay() {
+	
+	//draw current mode text
+	drawFanItem();
+	drawPumpItem();
+
+	//draw current time
+
+	//draw time since start
+	//draw scheduled off time
+
+	switch(tempPage) {	//draw the corresponding temperature data
+		case 0:
+			//draw text "Inside"
+
+			//draw internal temp, humidity
+
+			break;
+		case 1:
+			//draw text "Exterior"
+
+			//draw local external temp, humidity
+
+			break;
+
+		case 2:
+			//draw text "Internet"
+
+			//draw internet temp/humidity
+
+			break;
+	}
+
+	
+	return;
+}
+
+void drawFanItem() {
+	
+	//draw fan icon
+
+	if(fanSpeed > 5) {
+		//percentage text
+
+	} else {
+		//off text
+
+	}
+
+	return;
+}
+
+void drawPumpItem() {
+	
+	//draw water drop symbol
+
+	//draw pump status
+
+	return;
+}
+
+void updateStatusLED(int ledTypeStruct) {
+	
+	switch(ledTypeStruct) {
+		case 0:		//off
+
+		break;
+
+		case 1:		//auto mode
+			//lamp changes temperature based on temp differential outside house
+
+		break;
+
+
+		case 2.1:		//manual mode fan only
+			//light is green, brightness controlled by fan speed.
+
+		break;
+
+		case 2.2:		//manual mode water only
+			//priming pump, pulse blue
+
+		break;
+
+		case 2.3:		//manual mode fan with water
+			//blue light, brightness controlled by fan speed.
+
+		break;
+
+
+		case 3.1:		//waiting for scheduled start
+			//pulse white
+
+		break;
+
+		case 3.2:		//running until scheduled stop
+			//white
+
+		break;
+
+
+		default:	//something went wrong
+			//flash white error code
+
+		break;
+
+	}
+
+	return;
+}
+
+void setBrightnessByPercent(int percentage) {
+	//we compensate for linear/log luma output
+
+	//https://ledshield.wordpress.com/2012/11/13/led-brightness-to-your-eye-gamma-correction-no/
+
+	brightness_mod = magic multiplier value;
+	
+	return;
+}
