@@ -61,6 +61,12 @@ Adafruit_BMP280 bmp;
 #include <Adafruit_NeoPixel.h>
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, 15, NEO_GRB + NEO_KHZ800);
 
+#define PUMP_PIN 12
+#define FAN_PIN 13
+
+#define BUTTON_1    14
+#define BUTTON_2    15
+#define BUTTON_3    0
 
 float tempLocal     = 0;
 float tempLocal2    = 0;
@@ -95,9 +101,14 @@ void initSensors()
 
 void initPins() {
     displayBootScreen("  Initialising I/O  ");
+  
+    pinMode(PUMP_PIN,OUTPUT);
+    digitalWrite(PUMP_PIN, 0);  //set fan speed to 0
 
-    //fan and water control goes here
-
+    pinMode(FAN_PIN, OUTPUT);
+    analogWriteFreq(1000);      //set PWM freq to 1kHz
+    analogWriteRange(1023);     //10 bit pwm output
+    analogWrite(FAN_PIN, 0);  //set fan speed to 0
 }
 
 void setupHTTP() {
@@ -405,7 +416,26 @@ void displayStatusLED()
     strip.show(); // This sends the updated pixel color to the hardware.
 }
 
+// ------ CONTROL OF HARDWARE  ------------
 
+void setWaterPump(bool state) 
+{
+    digitalWrite(PUMP_PIN, state);
+}
+
+void setFanOutput(int percentage) 
+{
+
+    if(controlMode < 2)
+    {
+        //shouldn't run the fan
+        percentage = 0;
+    }
+
+    int output = map(percentage, 0, 100, 0, 1023);  //map percentage to 10bit output for PWM
+
+    analogWrite(PUMP_PIN, output);
+}
 
 // ------ AQUISITION OF SENSOR DATA  ------------
 
