@@ -26,12 +26,14 @@ int wifiAttempts = 0;       //track connection attempts to graciously fallback t
 #include <PubSubClient.h>       
 PubSubClient client(espClient);
 
-#define mqtt_server "YOUR_MQTT_SERVER_HOST"
+#define mqtt_server "192.168.1.100"
 #define mqtt_user "your_username"
 #define mqtt_password "your_password"
 
-#define humidity_topic "sensor/humidity"
-#define temperature_topic "sensor/temperature"
+#define temperature_topic "sensors/newhalf/temperature"
+#define humidity_topic "sensors/newhalf/humidity"
+#define barometric_topic "sensors/newhalf/pressure"
+
 
 
 // Display (i2c)
@@ -228,7 +230,7 @@ void setup() {
     setupHTTP();    //web server
     setupMDNS();    //for brivisevap.local through bonjour
     setupSSDP();    
-    //setupMQTT();
+    setupMQTT();
 
     //done!
 }
@@ -238,7 +240,7 @@ void loop() {
     display.clearDisplay();
     
     HTTP.handleClient();        //SSDP etc
-    //mqttLoop();                 //MQTT code is self contained, this runs the loop level code it requires
+    mqttLoop();                 //MQTT code is self contained, this runs the loop level code it requires
 
     getLocalSensors();
     getExternalSensors();       //TODO get data from OPENHAB
@@ -258,7 +260,6 @@ void loop() {
 }
 
 // ------ OLED DISPLAY FUNCTIONS  ------------
-
 
 void displayBootScreen(String subText) {
     display.clearDisplay();
@@ -495,6 +496,7 @@ bool checkBound(float newValue, float prevValue, float maxDiff) {
 long lastMsg = 0;
 float temp = 0.0;
 float hum = 0.0;
+float baro = 0.0;
 float diff = 1.0;
 
 void mqttLoop() 
@@ -510,24 +512,28 @@ void mqttLoop()
     {
         lastMsg = now;
 
-        float newTemp = hdc.readTemperature();
-        float newHum = hdc.readHumidity();
+        float newTemp = tempLocal;
+        float newHum = humidityLocal;
+        float newBaro = baroLocal;
 
         if (checkBound(newTemp, temp, diff)) 
         {
           temp = newTemp;
-          Serial.print("New temperature:");
-          Serial.println(String(temp).c_str());
           client.publish(temperature_topic, String(temp).c_str(), true);
         }
 
         if (checkBound(newHum, hum, diff)) 
         {
           hum = newHum;
-          Serial.print("New humidity:");
-          Serial.println(String(hum).c_str());
           client.publish(humidity_topic, String(hum).c_str(), true);
         }
+
+        if (checkBound(newBaro, baro, diff)) 
+        {
+          baro = newBaro;
+          client.publish(barometric_topic, String(baro).c_str(), true);
+        }
+
     }
 }
 
