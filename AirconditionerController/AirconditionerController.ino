@@ -14,7 +14,7 @@
 #include <ESP8266SSDP.h>
 #include <ESP8266mDNS.h>
 
-#define wifi_ssid "Raptor Jnr"
+#define wifi_ssid "Raptor"
 #define wifi_password "bicycl35ar3funt0rid3"
 
 WiFiClient espClient;
@@ -181,6 +181,7 @@ void setupWiFi()
     if(wifiAttempts == 0)   //TODO do something with timeouts here
     {
         WiFi.begin(wifi_ssid, wifi_password);
+        delay(600);
     }
 
 
@@ -230,7 +231,7 @@ void setup() {
     setupHTTP();    //web server
     setupMDNS();    //for brivisevap.local through bonjour
     setupSSDP();    
-    setupMQTT();
+    //setupMQTT();
 
     //done!
 }
@@ -240,7 +241,7 @@ void loop() {
     display.clearDisplay();
     
     HTTP.handleClient();        //SSDP etc
-    mqttLoop();                 //MQTT code is self contained, this runs the loop level code it requires
+    //mqttLoop();                 //MQTT code is self contained, this runs the loop level code it requires
 
     getLocalSensors();
     getExternalSensors();       //TODO get data from OPENHAB
@@ -406,7 +407,8 @@ void displayAirconInfo()
     x -= 2;
     y += 19;
     display.setCursor(x,y);
-    display.println("12:34");
+    String internetTime = getInternetTime();
+    display.println(internetTime);
 
 }
 
@@ -458,13 +460,59 @@ void getInternetSensors() {
     //TODO ask for published weather data
 }
 
-void getInternetTime() {
+String getInternetTime() {
+  while (!!!espClient.connect("google.com", 80)) {
+    Serial.println("connection failed, retrying...");
+  }
 
-    //TODO ask for NTP time to keep reference with
+  espClient.print("HEAD / HTTP/1.1\r\n\r\n");
+ 
+  while(!!!espClient.available()) {
+     yield();
+  }
+
+  while(espClient.available()){
+    if (espClient.read() == '\n') {    
+      if (espClient.read() == 'D') {    
+        if (espClient.read() == 'a') {    
+          if (espClient.read() == 't') {    
+            if (espClient.read() == 'e') {    
+              if (espClient.read() == ':') {    
+                espClient.read();
+                String inboundData = espClient.readStringUntil('\r');
+                espClient.stop();
+
+				String timeString = cut_String_at_Delimiter(inboundData, ' ', 4);
+				timeString.remove(5);
+                return timeString;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
+//takes a string and delimiter character and returns the string after that delimiter
+String cut_String_at_Delimiter(String data, char separator, int index) 
+{
+  int found = 0;
+  int strIndex[] = { 0, -1 };
+  int maxIndex = data.length()-1;
 
+  for(int i=0; i <= maxIndex && found <= index; i++) 
+  {
+    if(data.charAt(i) == separator || i == maxIndex) 
+    {
+      found++;
+      strIndex[0] = strIndex[1]+1;
+      strIndex[1] = (i == maxIndex) ? i+1 : i;
+    }
+  }
 
+  return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
 
 // ------  MQTT CONNECTION HANDLING AND MESSAGING ------------
 
