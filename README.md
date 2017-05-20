@@ -1,9 +1,9 @@
 # HouseHound
-Home datalogging and display system for DIY (IP based) sensor nodes and web facing display.
+Home datalogging and display system for DIY (TCP/IP based) sensor nodes and web facing display.
 
 I use a Raspberry Pi running OpenHAB as the main hub, and then a bunch of stateless microcontroller nodes around the house interface over wifi and ethernet.
 
-This repo contains all the projects to consolidate everything, but any combination of parts will work alone.
+This repo contains all the applicable files for hardware, fimware, or notes for setup for each of the projects to consolidate everything, but any combination of parts should work alone. This repo is more for self-documenting the project than anything else, as keeping track of configuration is tedious.
 
 # Airconditioner Controller
 
@@ -28,6 +28,7 @@ Small and low cost Wifi Weather node for outdoor data collection, also sent to a
 Uses Adafruit HUZZAH ESP-12E
 Temperature and Humidity Sensor, includes additional spare IO for future expansion.
 Has hardware provision to run on a lithium battery such as an 18650 with solar panel.
+Uses MQTT to send data to the mosquitto server.
 
 # WeatherStation
 
@@ -44,6 +45,8 @@ This sits on a pole mounted to the roof. Leverages a Particle Photon wireless mi
 Sensors are sampled at 100ms, and averaged across the time between messages to the openHAB server for persistance and processing.
 
 We send temperature, humidity, rainfall accumulated and barometric pressure every minute, while windspeed, gusts and wind direction are sent far faster for a more interactive viewing experience.
+
+MQTT is used to send the values to the mosquitto broker.
 
 # MeterMonitor
 
