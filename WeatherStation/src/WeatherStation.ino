@@ -8,24 +8,71 @@
 * Date:   March 2017
 */
 
-#include "SparkFun_Photon_Weather_Shield_Library/SparkFun_Photon_Weather_Shield_Library.h"
+#include "SparkFun_Photon_Weather_Shield_Library.h"
 #include <math.h>
 
 #define SENSOR_SAMPLE_TIME_MS 100
-#define PUBLISH_RATE_S 30
+#define PUBLISH_RATE_S 5
 #define PUBLISH_RATE_MS (PUBLISH_RATE_S*1000) //seconds into msec
 
 // Timers to maintain sampling and publish throttles
 unsigned int timeNextSensorReading;
 unsigned int timeNextPublish;
 
+//SYSTEM_THREAD(ENABLED); //run code regardless of internet connection etc
+
+#include "MQTT.h"
+
+void callback(char* topic, byte* payload, unsigned int length);
+
+/**
+ * if want to use IP address,
+ * byte server[] = { XXX,XXX,XXX,XXX };
+ * MQTT client(server, 1883, callback);
+ * want to use domain name,
+ * MQTT client("www.sample.com", 1883, callback);
+ **/
+byte server[] = { 192,168,1,100 };
+MQTT client(server, 1883, callback);
+
+// recieve message
+void callback(char* topic, byte* payload, unsigned int length) {
+    char p[length + 1];
+    memcpy(p, payload, length);
+    p[length] = NULL;
+
+    /*if (!strcmp(p, "RED"))
+        RGB.color(255, 0, 0);
+    else if (!strcmp(p, "GREEN"))
+        RGB.color(0, 255, 0);
+    else if (!strcmp(p, "BLUE"))
+        RGB.color(0, 0, 255);
+    else
+        RGB.color(255, 255, 255);*/
+    delay(1000);
+}
+
 void setup()
 {
+  /*RGB.control(true);*/
+
+  // connect to the server
+  client.connect("weatherstation");
+
+  // publish/subscribe
+  if (client.isConnected())
+  {
+      client.publish("debug/weatherstation","Starting Up");
+  }
+
   //setup the sensing and calculation functions
    initializeTempHumidityAndPressure();
    initializeRainGauge();
    initializeAnemometer();
    initializeWindVane();
+
+   /*Serial.begin(38400);
+   Serial.println("Starting Up!");*/
 
    // Schedule the next sensor reading and publish events
    timeNextSensorReading  = millis() + SENSOR_SAMPLE_TIME_MS;
@@ -51,7 +98,7 @@ void loop()
        // Get the data to be published
        float tempC        = getAndResetTempC();
        float humidityRH   = getAndResetHumidityRH();
-       float pressureKPa  = getAndResetPressurePascals() / 1000.0;
+       float pressureKPa  = (getAndResetPressurePascals() / 100.0) + 5.4;
 
        float rainMillimeters = getAndResetRainMillimeters();
        float gustKMH;
@@ -60,19 +107,50 @@ void loop()
 
        // Publish the data
        publishToParticle( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
+       publishToMQTT( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
+       //publishToSerial( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
 
        // Schedule the next publish event
        timeNextPublish = millis() + PUBLISH_RATE_MS;
    }
 
-   delay(10);
+   if ( client.isConnected() )
+   {
+       client.loop();
+  }
+  else{
+    client.connect("weatherstation");
+  }
+  delay(20);
 }
 
 void publishToParticle(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
 {
    Particle.publish("weather",
-                       String::format("%0.1fC, %0.0f%%, %0.2fkPa, %0.2fmm, Avg:%0.0fkmh, Gust:%0.0fkmh, Dir:%0.0f deg.",
+                       String::format("%0.1fC, %0.0f%%, %0.0fhPa, %0.2fmm, Avg:%0.0fkmh, Gust:%0.0fkmh, Dir:%0.0f deg.",
                            tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees), 60 , PRIVATE);
+}
+
+void publishToMQTT(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
+{
+  client.publish("enviro/temperature",String(tempC));
+  client.publish("enviro/pressure",String(pressureKPa));
+  client.publish("enviro/windKMH",String(windKMH));
+  client.publish("enviro/windGust",String(gustKMH));
+  client.publish("enviro/windAngle",String(windDegrees));
+  client.publish("enviro/rainMillimeters",String(rainMillimeters));
+  client.publish("enviro/humidity",String(humidityRH));
+}
+
+void publishToSerial(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
+{
+  Serial.print("Wind: "); Serial.println(windKMH);
+  Serial.print("Gust: "); Serial.println(gustKMH);
+  Serial.print("Dir: "); Serial.println(windDegrees);
+  Serial.print("Temp: "); Serial.println(tempC);
+  Serial.print("Humidity: "); Serial.println(humidityRH);
+  Serial.print("Pressure: "); Serial.println(pressureKPa);
+  Serial.print("Rainfall: "); Serial.println(rainMillimeters);
 }
 
 //===========================================================
