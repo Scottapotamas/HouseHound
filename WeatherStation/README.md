@@ -1,35 +1,24 @@
 # WeatherStation
 
-A Particle project named WeatherStation
+This node is built with a Particle Photon and a Sparkfun Weather shield.
 
-## Welcome to your project!
+Uses MQTT to report to the MQTT/Openhab server.
 
-Every new Particle project is composed of 3 important elements that you'll see have been created in your project directory for WeatherStation.
+This was a fast turn-key approach to sampling wind, rainfall and wind direction.
 
-#### ```/src``` folder:  
-This is the source folder that contains the firmware files for your project. It should *not* be renamed. 
-Anything that is in this folder when you compile your project will be sent to our compile service and compiled into a firmware binary for the Particle device that you have targeted.
+Code is somewhat verbose. Bits borrowed from https://github.com/rpurser47/weatherstation with some restructuring.
 
-If your application contains multiple files, they should all be included in the `src` folder. If your firmware depends on Particle libraries, those dependencies are specified in the `project.properties` file referenced below.
+# Self-heating
 
-#### ```.ino``` file:
-This file is the firmware that will run as the primary application on your Particle device. It contains a `setup()` and `loop()` function, and can be written in Wiring or C/C++. For more information about using the Particle firmware API to create firmware for your Particle device, refer to the [Firmware Reference](https://docs.particle.io/reference/firmware/) section of the Particle documentation.
+The particle photon generates lots of heat when connected to wifi. This causes a self-heating effect which is measured by the temp sensor.
 
-#### ```project.properties``` file:  
-This is the file that specifies the name and version number of the libraries that your project depends on. Dependencies are added automatically to your `project.properties` file when you add a library to a project using the `particle library add` command in the CLI or add a library in the Desktop IDE.
+I attempted to reduce the effects by manually controlling the photon's wifi and putting it to sleep between report periods.
+Turns out the ubiquiti wifi access point doesn't like a device re-connecting every 5 seconds for days, so this ended up not working.
 
-## Adding additional files to your project
+The sensor's data is really just used for the external sensors on the roof, and barometric pressure.
 
-#### Projects with multiple sources
-If you would like add additional files to your application, they should be added to the `/src` folder. All files in the `/src` folder will be sent to the Particle Cloud to produce a compiled binary.
+# TODO
 
-#### Projects with external libraries
-If your project includes a library that has not been registered in the Particle libraries system, you should create a new folder named `/lib/<libraryname>/src` under `/<project dir>` and add the `.h` and `.cpp` files for your library there. All contents of the `/lib` folder and subfolders will also be sent to the Cloud for compilation.
+There is a lot of cross-coupled noise between the wind speed and rain reed-switch lines. The actual sensors are on a very long cable.
 
-## Compiling your project
-
-When you're ready to compile your project, make sure you have the correct Particle device target selected and run `particle compile <platform>` in the CLI or click the Compile button in the Desktop IDE. The following files in your project folder will be sent to the compile service:
-
-- Everything in the `/src` folder, including your `.ino` application file
-- The `project.properties` file for your project
-- Any libraries stored under `lib/<libraryname>/src`
+Need to put a scope on the lines, determine suitable software debounce parameters or beef up the sparkfun board circuitry. Would have been nice for Sparkfun to drive the switches at VCC level, then translate back to 3v3 for the micro.

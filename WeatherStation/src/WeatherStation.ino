@@ -11,7 +11,7 @@
 #include "SparkFun_Photon_Weather_Shield_Library.h"
 #include <math.h>
 
-#define SENSOR_SAMPLE_TIME_MS 100
+#define SENSOR_SAMPLE_TIME_MS 500
 #define PUBLISH_RATE_S 5
 #define PUBLISH_RATE_MS (PUBLISH_RATE_S*1000) //seconds into msec
 
@@ -54,9 +54,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 void setup()
 {
-  /*RGB.control(true);*/
-
-  // connect to the server
   client.connect("weatherstation");
 
   // publish/subscribe
@@ -70,9 +67,6 @@ void setup()
    initializeRainGauge();
    initializeAnemometer();
    initializeWindVane();
-
-   /*Serial.begin(38400);
-   Serial.println("Starting Up!");*/
 
    // Schedule the next sensor reading and publish events
    timeNextSensorReading  = millis() + SENSOR_SAMPLE_TIME_MS;
@@ -92,7 +86,7 @@ void loop()
        timeNextSensorReading = millis() + SENSOR_SAMPLE_TIME_MS;
    }
 
-   // Publish the data collected to Particle and to ThingSpeak
+   // Publish the data collected to MQTT
    if( timeNextPublish <= millis() )
    {
        // Get the data to be published
@@ -106,7 +100,7 @@ void loop()
        float windDegrees  = getAndResetWindVaneDegrees();
 
        // Publish the data
-       publishToParticle( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
+       //publishToParticle( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
        publishToMQTT( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
        //publishToSerial( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
 
@@ -114,14 +108,16 @@ void loop()
        timeNextPublish = millis() + PUBLISH_RATE_MS;
    }
 
-   if ( client.isConnected() )
-   {
-       client.loop();
-  }
-  else{
-    client.connect("weatherstation");
-  }
-  delay(20);
+   //connect to network
+     if ( client.isConnected() )
+     {
+         client.loop();
+     }
+     else
+     {
+         client.connect("weatherstation");
+     }
+
 }
 
 void publishToParticle(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
@@ -131,15 +127,20 @@ void publishToParticle(float tempC, float humidityRH, float pressureKPa, float r
                            tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees), 60 , PRIVATE);
 }
 
-void publishToMQTT(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
+int publishToMQTT(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
 {
-  client.publish("enviro/temperature",String(tempC));
-  client.publish("enviro/pressure",String(pressureKPa));
-  client.publish("enviro/windKMH",String(windKMH));
-  client.publish("enviro/windGust",String(gustKMH));
-  client.publish("enviro/windAngle",String(windDegrees));
-  client.publish("enviro/rainMillimeters",String(rainMillimeters));
-  client.publish("enviro/humidity",String(humidityRH));
+  int publish_successes = 0;
+
+  //client.publish returns 0 if failed, 1 if success
+  publish_successes += client.publish("enviro/temperature",String(tempC));
+  publish_successes += client.publish("enviro/pressure",String(pressureKPa));
+  publish_successes += client.publish("enviro/windKMH",String(windKMH));
+  publish_successes += client.publish("enviro/windGust",String(gustKMH));
+  publish_successes += client.publish("enviro/windAngle",String(windDegrees));
+  publish_successes += client.publish("enviro/rainMillimeters",String(rainMillimeters));
+  publish_successes += client.publish("enviro/humidity",String(humidityRH));
+
+  return publish_successes;
 }
 
 void publishToSerial(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
@@ -263,8 +264,8 @@ int RainPin = D2;
 
 volatile unsigned int rainEventCount;
 unsigned int          lastRainEvent;
-float                 RainScaleInches = 0.011; // Datasheet: Pulse = .011 inches of rain
-float                 RainScaleMillimeters = 0.2794; // From imperial value
+float                 RainScaleInches = 0.022; // Datasheet: Pulse = .011 inches of rain
+float                 RainScaleMillimeters = 0.5588; // From imperial value
 
 void initializeRainGauge()
 {
@@ -282,7 +283,7 @@ void handleRainEvent() {
    unsigned int timeRainEvent = millis(); // grab current time
 
    // debounce <10mS readings
-   if( timeRainEvent - lastRainEvent < 10 ) {
+   if( timeRainEvent - lastRainEvent < 85 ) {
      return;
    }
 
@@ -338,8 +339,8 @@ void handleAnemometerEvent()
        //time since last event
        unsigned int period = timeAnemometerEvent - lastAnemoneterEvent;
 
-       // debounce <10mS readings (max windspeed of 240km/h)
-       if( period < 10 )
+       // debounce <20mS readings
+       if( period < 20 )
        {
          return;
        }
