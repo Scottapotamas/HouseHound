@@ -7,54 +7,54 @@
   Scott Rapson - 2017
 */
 
-#define SoftReset 0x00    //Software Reset
-#define SysStatus0 0x01   //System Status0
-#define SysStatus1 0x02   //System Status1
-#define FuncEn0 0x03      //Function Enable0
-#define FuncEn1 0x04      //Function Enable1
-#define SagTh 0x08        //Voltage Sag Threshold
-//#define SmallPMod 0x04  //Small-Power Mode
+#define SoftReset   0x00    //Software Reset
+#define SysStatus0  0x01    //System Status0
+#define SysStatus1  0x02    //System Status1
+#define FuncEn0     0x03    //Function Enable0
+#define FuncEn1     0x04    //Function Enable1
+#define SagTh       0x08    //Voltage Sag Threshold
+//#define SmallPMod   0x04  //Small-Power Mode
 #define LastSPIData 0x0F  //Last Read/Write SPI Value
-//#define LSB 0x08        //RMS/Power 16-bit LSB
+//#define LSB         0x08        //RMS/Power 16-bit LSB
 
-#define ConfigStart 0x30  //Configuration start command
-#define PLconstH 0x31     //High Word of PL_Constant
-#define PLconstL 0x32     //Low Word of PL_Constant
-#define MMode0 0x33       //Metering Mode Configuration
-#define MMode1 0x34       //Metering Mode Configuration
-#define PStartTh 0x35     //Active Startup Power Threshold
-#define QStartTh 0x36     //Reactive Startup Power Threshold
-#define CSZero 0x3B	      //Checksum 0
+#define ConfigStart 0x30    //Configuration start command
+#define PLconstH  0x31      //High Word of PL_Constant
+#define PLconstL  0x32      //Low Word of PL_Constant
+#define MMode0    0x33      //Metering Mode Configuration
+#define MMode1    0x34      //Metering Mode Configuration
+#define PStartTh  0x35      //Active Startup Power Threshold
+#define QStartTh  0x36      //Reactive Startup Power Threshold
+#define CSZero    0x3B	    //Checksum 0
 
-#define CalStart 0x40     //Calibration Start Command
-#define PoffsetA 0x41     //L Line Active Power Offset
-#define QoffsetA 0x42     //L Line Reactive Power Offset
-#define PoffsetB 0x43     //L Line Active Power Offset
-#define QoffsetB 0x44     //L Line Reactive Power Offset
-#define PoffsetC 0x45     //L Line Active Power Offset
-#define QoffsetC 0x46     //L Line Reactive Power Offset
-#define GainA 0x47        //A Line Calibration Gain
-#define PhiA 0x48         //A Line Calibration Angle
-#define GainB 0x49        //B Line Calibration Gain
-#define PhiB 0x4A         //B Line Calibration Angle
-#define GainC 0x4B        //C Line Calibration Gain
-#define PhiC 0x4C         //C Line Calibration Angle
-#define CSOne 0x4D        //Checksum 1
+#define CalStart  0x40     //Calibration Start Command
+#define PoffsetA  0x41     //L Line Active Power Offset
+#define QoffsetA  0x42     //L Line Reactive Power Offset
+#define PoffsetB  0x43     //L Line Active Power Offset
+#define QoffsetB  0x44     //L Line Reactive Power Offset
+#define PoffsetC  0x45     //L Line Active Power Offset
+#define QoffsetC  0x46     //L Line Reactive Power Offset
+#define GainA     0x47     //A Line Calibration Gain
+#define PhiA      0x48     //A Line Calibration Angle
+#define GainB     0x49     //B Line Calibration Gain
+#define PhiB      0x4A     //B Line Calibration Angle
+#define GainC     0x4B     //C Line Calibration Gain
+#define PhiC      0x4C     //C Line Calibration Angle
+#define CSOne     0x4D     //Checksum 1
 
-#define AdjStart 0x60     //Measurement Calibration Start Command
-#define UgainA 0x61       //A Voltage rms Gain
-#define IgainA 0x62       //A Line Current rms Gain
-#define UgainB 0x65       //B Voltage rms Gain
-#define UgainC 0x69       //C Voltage rms Gain
-#define IgainB 0x66       //B Line Current rms Gain
-#define IgainC 0x6A       //C Line Current rms Gain
-#define UoffsetA 0x63     //Voltage Offset
-#define UoffsetB 0x67     //Voltage Offset
-#define UoffsetC 0x6B     //Voltage Offset
-#define IoffsetA 0x64     //L Line Current Offset
-#define IoffsetB 0x68     //N Line Current Offse
-#define IoffsetC 0x6C     //N Line Current Offse
-#define CSThree 0x6F      //Checksum 3
+#define AdjStart  0x60     //Measurement Calibration Start Command
+#define UgainA    0x61     //A Voltage rms Gain
+#define IgainA    0x62     //A Line Current rms Gain
+#define UgainB    0x65     //B Voltage rms Gain
+#define UgainC    0x69     //C Voltage rms Gain
+#define IgainB    0x66     //B Line Current rms Gain
+#define IgainC    0x6A     //C Line Current rms Gain
+#define UoffsetA  0x63     //Voltage Offset
+#define UoffsetB  0x67     //Voltage Offset
+#define UoffsetC  0x6B     //Voltage Offset
+#define IoffsetA  0x64     //L Line Current Offset
+#define IoffsetB  0x68     //N Line Current Offse
+#define IoffsetC  0x6C     //N Line Current Offse
+#define CSThree   0x6F     //Checksum 3
 
 #define APenergyA 0x81    //Forward Active Energy
 #define APenergyB 0x82    //Forward Active Energy
@@ -72,12 +72,12 @@
 #define RPenergyT 0x88    //Absolute Reactive Energy
 #define EnStatus0 0x95    //Metering Status
 #define EnStatus1 0x96    //Metering Status
-#define IrmsA 0xDD        //L Line Current rms A
-#define IrmsB 0xDE        //L Line Current rms B
-#define IrmsC 0xDF        //L Line Current rms C
-#define UrmsA 0xD9        //Voltage rms A
-#define UrmsB 0xDA        //Voltage rms B
-#define UrmsC 0xDB        //Voltage rms C
+#define IrmsA     0xDD    //L Line Current rms A
+#define IrmsB     0xDE    //L Line Current rms B
+#define IrmsC     0xDF    //L Line Current rms C
+#define UrmsA     0xD9    //Voltage rms A
+#define UrmsB     0xDA    //Voltage rms B
+#define UrmsC     0xDB    //Voltage rms C
 
 #define PmeanT 0xB0     //Total Mean Active Power
 #define PmeanA 0xB1     //A Line Mean Active Power
@@ -91,7 +91,7 @@
 #define SmeanC 0xBB     //C Line Mean Apparent Power
 #define PFmeanT 0xBC    //Mean Power Factor
 
-#define Freq 0xF8       //Voltage Frequency
+#define Freq    0xF8    //Voltage Frequency
 #define PangleA 0xF9    //Phase Angle between Voltage and A Line Current
 #define PangleB 0xFA    //Phase Angle between Voltage and B Line Current
 #define PangleC 0xFB    //Phase Angle between Voltage and C Line Current
@@ -134,7 +134,7 @@ void setup()
   // publish/subscribe
   if (client.isConnected())
   {
-      client.publish("debug/weatherstation","Starting Up");
+      client.publish("debug/powermonitor","Starting Up");
   }
 
   /*Initialise the ATM90E36 + SPI port */
@@ -150,6 +150,7 @@ void loop()
   {
       captureVoltages();
       captureCurrents();
+      capturePowers();
       captureOther();
 
       // Schedule the next sensor reading
@@ -166,6 +167,10 @@ void loop()
                     get_averaged_currentA(),
                     get_averaged_currentB(),
                     get_averaged_currentC(),
+                    get_averaged_powerA(),
+                    get_averaged_powerB(),
+                    get_averaged_powerC(),
+                    get_averaged_powerT(),
                     get_averaged_powerfactor(),
                     get_averaged_frequency()
                     );
@@ -199,7 +204,7 @@ void loop()
 // Getting data out of the photon...
 //===========================================================
 
-void publishToMQTT(float v_A, float v_B, float v_C, float i_A, float i_B, float i_C, float pf, float freq)
+void publishToMQTT(float v_A, float v_B, float v_C, float i_A, float i_B, float i_C, float w_A, float w_B, float w_C, float w_T, float pf, float freq)
 {
   client.publish( "power/voltsA", String(v_A) );
   client.publish( "power/voltsB", String(v_B) );
@@ -209,11 +214,16 @@ void publishToMQTT(float v_A, float v_B, float v_C, float i_A, float i_B, float 
   client.publish( "power/currentB", String(i_B) );
   client.publish( "power/currentC", String(i_C) );
 
-  //TODO publish real power (V*I*cosTheta) for each Phase
-  //TODO publish sum of powers for "house power?"
+  client.publish( "power/powerA", String(w_A) );
+  client.publish( "power/powerB", String(w_B) );
+  client.publish( "power/powerC", String(w_C) );
+  client.publish( "power/powerTotal", String(w_T) );
 
   client.publish( "power/powerfactor", String(pf) );
   client.publish( "power/frequency", String(freq) );
+
+
+  client.publish( "debug/power/voltages", String("A: ") +  String(v_A) + String("B: ") +  String(v_B) + String("C: ") +  String(v_C));
 
 }
 
@@ -248,8 +258,8 @@ void checkStatus()
 // Line Voltages
 //===========================================================
 
-double voltageA_total,voltageB_total,voltageC_total;
-int voltageA_count,voltageB_count,voltageC_count;
+double voltageA_total,voltageB_total,voltageC_total = 0;
+int voltageA_count,voltageB_count,voltageC_count = 0;
 
 void captureVoltages()
 {
@@ -280,25 +290,34 @@ void captureVoltages()
 
 float get_averaged_voltageA()
 {
-  return voltageA_total / voltageA_count;
+  float result = voltageB_count / (float)voltageA_count;
+  voltageB_count = 0;
+  voltageA_count = 0;
+  return result;
 }
 
 float get_averaged_voltageB()
 {
-  return voltageB_total / voltageB_count;
+  float result = voltageB_total / (float)voltageB_count;
+  voltageB_total = 0;
+  voltageB_count = 0;
+  return result;
 }
 
 float get_averaged_voltageC()
 {
-  return voltageC_total / voltageC_count;
+  float result = voltageC_total / (float)voltageC_count;
+  voltageC_total = 0;
+  voltageC_count = 0;
+  return result;
 }
 
 //===========================================================
 // Current Values
 //===========================================================
 
-double currentA_total,currentB_total,currentC_total;
-int currentA_count,currentB_count,currentC_count;
+double currentA_total,currentB_total,currentC_total = 0;
+int currentA_count,currentB_count,currentC_count = 0;
 
 void captureCurrents()
 {
@@ -329,25 +348,107 @@ void captureCurrents()
 
 float get_averaged_currentA()
 {
-  return currentA_total / currentA_count;
+  float result = currentA_total / (float)currentA_count;
+  currentA_total = 0;
+  currentA_count = 0;
+  return result;
 }
 
 float get_averaged_currentB()
 {
-  return currentB_total / currentB_count;
+  float result = currentB_total / (float)currentB_count;
+  currentB_total = 0;
+  currentB_count = 0;
+  return result;
 }
 
 float get_averaged_currentC()
 {
-  return currentC_total / currentC_count;
+  float result = currentC_total / (float)currentC_count;
+  currentC_total = 0;
+  currentC_count = 0;
+  return result;
+}
+
+//===========================================================
+// Power Values
+//===========================================================
+
+double powerA_total,powerB_total,powerC_total,powerT_total = 0;
+int powerA_count,powerB_count,powerC_count,powerT_count = 0;
+
+void capturePowers()
+{
+  float powerA, powerB, powerC, powerT;
+
+  powerA = GetActivePowerA();
+  powerB = GetActivePowerB();
+  powerC = GetActivePowerC();
+  powerT = GetActivePowerT();
+
+  if( powerA > 0 && powerA < 100 )
+  {
+    powerA_total += powerA;
+    powerA_count++;
+  }
+
+  if( powerB > 0 && powerB < 100 )
+  {
+    powerB_total += powerB;
+    powerB_count++;
+  }
+
+  if( powerC > 0 && powerC < 100 )
+  {
+    powerC_total += powerC;
+    powerC_count++;
+  }
+
+  if( powerT > 0 && powerT < 100 )
+  {
+    powerT_total += powerT;
+    powerT_count++;
+  }
+}
+
+float get_averaged_powerA()
+{
+  float result = powerA_total / (float)powerA_count;
+  powerA_total = 0;
+  powerA_count = 0;
+  return result;
+}
+
+float get_averaged_powerB()
+{
+  float result = powerB_total / (float)powerB_count;
+  powerB_total = 0;
+  powerB_count = 0;
+  return result;
+}
+
+float get_averaged_powerC()
+{
+  float result = powerC_total / (float)powerC_count;
+  powerC_total = 0;
+  powerC_count = 0;
+  return result;
+}
+
+float get_averaged_powerT()
+{
+  float result = powerT_total / (float)powerT_count;
+  powerT_total = 0;
+  powerT_count = 0;
+  return result;
 }
 
 //===========================================================
 // Frequency and Power Factor
 //===========================================================
 
-double freq_total,pf_total;
-int freq_count,pf_count;
+double freq_total,pf_total = 0;
+int freq_count,pf_count = 0;
 
 void captureOther()
 {
@@ -373,12 +474,18 @@ void captureOther()
 
 float get_averaged_frequency()
 {
-  return freq_total / freq_count;
+  float result = freq_total / (float)freq_count;
+  freq_total = 0;
+  freq_count = 0;
+  return result;
 }
 
 float get_averaged_powerfactor()
 {
-  return pf_total / pf_count;
+  float result = pf_total / (float)pf_count;
+  pf_total = 0;
+  pf_count = 0;
+  return result;
 }
 
 //===========================================================
@@ -412,9 +519,11 @@ void InitEnergyIC()
 
   Serial.print("Checksum 0:");
   Serial.println(CommEnergyIC(1, CSZero, 0x0000), HEX); //Checksum 0. Needs to be calculated based off the above values.
+  client.publish( "debug/power/cs0", String(CommEnergyIC(1, CSZero, 0x0000), HEX) );
 
   //Set metering calibration values
   CommEnergyIC(0, CalStart, 0x5678); //Metering calibration startup command. Register 41 to 4D need to be set
+
   CommEnergyIC(0, GainA, 0x1D39); //Line calibration gain
   CommEnergyIC(0, PhiA, 0x0000); //Line calibration angle
   CommEnergyIC(0, GainB, 0x1D39); //Line calibration gain
@@ -427,29 +536,36 @@ void InitEnergyIC()
   CommEnergyIC(0, QoffsetB, 0x0000); //B line reactive power offset
   CommEnergyIC(0, PoffsetC, 0x0000); //C line active power offset
   CommEnergyIC(0, QoffsetC, 0x0000); //C line reactive power offset
+
   CommEnergyIC(0, CSOne, 0x2402); //Write CSOne, as self calculated
 
   Serial.print("Checksum 1:");
   Serial.println(CommEnergyIC(1, CSOne, 0x0000), HEX); //Checksum 1. Needs to be calculated based off the above values.
+  client.publish( "debug/power/cs1", String(CommEnergyIC(1, CSOne, 0x0000), HEX) );
 
   //Set measurement calibration values
   CommEnergyIC(0, AdjStart, 0x5678); //Measurement calibration startup command, registers 61-6F
+
   CommEnergyIC(0, UgainA, 0xD8E9);  //A SVoltage rms gain
-  CommEnergyIC(0, IgainA, 0x1BC9); //A line current gain
   CommEnergyIC(0, UoffsetA, 0x0000); //A Voltage offset
+  CommEnergyIC(0, IgainA, 0x1BC9); //A line current gain
   CommEnergyIC(0, IoffsetA, 0x0000); //A line current offset
+
   CommEnergyIC(0, UgainB, 0xD8E9);  //B Voltage rms gain
-  CommEnergyIC(0, IgainB, 0x1BC9); //B line current gain
   CommEnergyIC(0, UoffsetB, 0x0000); //B Voltage offset
+  CommEnergyIC(0, IgainB, 0x1BC9); //B line current gain
   CommEnergyIC(0, IoffsetB, 0x0000); //B line current offset
+
   CommEnergyIC(0, UgainC, 0xD8E9);  //C Voltage rms gain
-  CommEnergyIC(0, IgainC, 0x1BC9); //C line current gain
   CommEnergyIC(0, UoffsetC, 0x0000); //C Voltage offset
+  CommEnergyIC(0, IgainC, 0x1BC9); //C line current gain
   CommEnergyIC(0, IoffsetC, 0x0000); //C line current offset
-  CommEnergyIC(0, CSThree, 0xA694); //Write CSThree, as self calculated
+
+  CommEnergyIC(0, CSThree, 0xF941); //Write CSThree, as self calculated
 
   Serial.print("Checksum 3:");
   Serial.println(CommEnergyIC(1, CSThree, 0x0000), HEX); //Checksum 3. Needs to be calculated based off the above values.
+  client.publish( "debug/power/cs3", String(CommEnergyIC(1, CSThree, 0x0000), HEX) );
 
   CommEnergyIC(0, ConfigStart, 0x8765); //Checks correctness of 31-3B registers and starts normal metering if ok
   CommEnergyIC(0, CalStart, 0x8765); //Checks correctness of 41-4D registers and starts normal metering if ok
@@ -459,26 +575,30 @@ void InitEnergyIC()
 
   if (systemstatus0 & 0x4000)
   {
-    //checksum 1 error
     Serial.println("checksum error 0");
+    client.publish( "debug/power/status0", String("Checksum error 0") );
+
   }
 
   if (systemstatus0 & 0x1000)
   {
-    //checksum 2 error
      Serial.println("checksum error 1");
+     client.publish( "debug/power/status0", String("Checksum error 1") );
+
   }
 
   if (systemstatus0 & 0x0400)
   {
-    //checksum 2 error
      Serial.println("checksum error 2");
+     client.publish( "debug/power/status0", String("Checksum error 2") );
+
   }
 
   if (systemstatus0 & 0x0100)
   {
-    //checksum 2 error
      Serial.println("checksum error 3");
+     client.publish( "debug/power/status0", String("Checksum error 3") );
+
   }
 }
 
@@ -490,9 +610,9 @@ unsigned short CommEnergyIC(unsigned char RW, unsigned short address, unsigned s
   unsigned short address1;
 
   //SPI interface rate is 200 to 160k bps. It will need to be slowed down for EnergyIC
-    SPI.setClockSpeed(200000);
-    SPI.setBitOrder(MSBFIRST);
-    SPI.setDataMode(SPI_MODE3);
+  SPI.setClockSpeed(200000);
+  SPI.setBitOrder(MSBFIRST);
+  SPI.setDataMode(SPI_MODE3);
 
   //switch MSB and LSB of value
   output = (val >> 8) | (val << 8);
@@ -503,7 +623,6 @@ unsigned short CommEnergyIC(unsigned char RW, unsigned short address, unsigned s
   //Swap address bytes
   address1 = (address >> 8) | (address << 8);
   address = address1;
-
 
   //Transmit and receive data
   SPI.beginTransaction();
@@ -552,19 +671,20 @@ unsigned short CommEnergyIC(unsigned char RW, unsigned short address, unsigned s
 double GetLineVoltageA()
 {
   unsigned short voltage = CommEnergyIC(1, UrmsA, 0xFFFF);
-  return (double)voltage / 238.5;
+
+  return (double)voltage;// / 238.5;
 }
 
 double GetLineVoltageB()
 {
   unsigned short voltage = CommEnergyIC(1, UrmsB, 0xFFFF);
-  return (double)voltage / 238.5;
+  return (double)voltage;// / 238.5;
 }
 
 double GetLineVoltageC()
 {
   unsigned short voltage = CommEnergyIC(1, UrmsC, 0xFFFF);
-  return (double)voltage / 238.5;
+  return (double)voltage;// / 238.5;
 }
 
 unsigned short GetMeterStatus0()
@@ -600,10 +720,28 @@ double GetActivePowerA()
   return (double)apower * 2.94;
 }
 
+double GetActivePowerB()
+{
+  short int bpower = (short int)CommEnergyIC(1, PmeanB, 0xFFFF); //Complement, MSB is signed bit
+  return (double)bpower * 2.94;
+}
+
+double GetActivePowerC()
+{
+  short int cpower = (short int)CommEnergyIC(1, PmeanC, 0xFFFF); //Complement, MSB is signed bit
+  return (double)cpower * 2.94;
+}
+
+double GetActivePowerT()
+{
+  short int tpower = (short int)CommEnergyIC(1, PmeanT, 0xFFFF); //Complement, MSB is signed bit
+  return (double)tpower * 2.94;
+}
+
 double GetFrequency()
 {
   unsigned short freq = CommEnergyIC(1, Freq, 0xFFFF);
-  return (double)freq / 100;
+  return (double)freq / 102.379;
 }
 
 double GetPowerFactor()
