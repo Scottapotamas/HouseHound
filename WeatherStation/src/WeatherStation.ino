@@ -10,18 +10,24 @@
 
 #include "SparkFun_Photon_Weather_Shield_Library.h"
 #include <math.h>
+#include <RunningMedian.h>
+#include "MQTT.h"
 
 #define SENSOR_SAMPLE_TIME_MS 500
 #define PUBLISH_RATE_S 5
 #define PUBLISH_RATE_MS (PUBLISH_RATE_S*1000) //seconds into msec
 
+#define LONG_TERM_AVERAGE_M 5
+#define LONG_TERM_BUFFER_SIZE ((LONG_TERM_AVERAGE_M*60)/PUBLISH_RATE_S) //sample pubs (sec) into longterm period (min to seconds)
+
 // Timers to maintain sampling and publish throttles
 unsigned int timeNextSensorReading;
 unsigned int timeNextPublish;
 
-//SYSTEM_THREAD(ENABLED); //run code regardless of internet connection etc
+//Manage rolling buffer of windspeeds for whisker style display of speeds
+RunningMedian windBuffer = RunningMedian(LONG_TERM_BUFFER_SIZE);
 
-#include "MQTT.h"
+//SYSTEM_THREAD(ENABLED); //run code regardless of internet connection etc
 
 void callback(char* topic, byte* payload, unsigned int length);
 
@@ -40,15 +46,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
     char p[length + 1];
     memcpy(p, payload, length);
     p[length] = NULL;
-
-    /*if (!strcmp(p, "RED"))
-        RGB.color(255, 0, 0);
-    else if (!strcmp(p, "GREEN"))
-        RGB.color(0, 255, 0);
-    else if (!strcmp(p, "BLUE"))
-        RGB.color(0, 0, 255);
-    else
-        RGB.color(255, 255, 255);*/
     delay(1000);
 }
 
@@ -62,7 +59,7 @@ void setup()
       client.publish("debug/weatherstation","Starting Up");
   }
 
-  //setup the sensing and calculation functions
+   //setup the sensing and calculation functions
    initializeTempHumidityAndPressure();
    initializeRainGauge();
    initializeAnemometer();
@@ -95,14 +92,17 @@ void loop()
        float pressureKPa  = (getAndResetPressurePascals() / 100.0) + 5.4;
 
        float rainMillimeters = getAndResetRainMillimeters();
-       float gustKMH;
-       float windKMH      = getAndResetAnemometerKMH( &gustKMH );
-       float windDegrees  = getAndResetWindVaneDegrees();
 
-       // Publish the data
+       float windKMH      = getAndResetAnemometerKMH();
+       windBuffer.add(windKMH); //add the latest reading to the buffer
+       float averageWind   = windBuffer.getAverage();
+       float minWind      = windBuffer.getLowest();
+       float maxWind      = windBuffer.getHighest();
+
+       int windDegrees  = getAndResetWindVaneDegrees();
+
        //publishToParticle( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
-       publishToMQTT( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
-       //publishToSerial( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
+       publishToMQTT( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, averageWind, minWind, maxWind, windDegrees);
 
        // Schedule the next publish event
        timeNextPublish = millis() + PUBLISH_RATE_MS;
@@ -120,38 +120,29 @@ void loop()
 
 }
 
-void publishToParticle(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
+/*void publishToParticle(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
 {
    Particle.publish("weather",
                        String::format("%0.1fC, %0.0f%%, %0.0fhPa, %0.2fmm, Avg:%0.0fkmh, Gust:%0.0fkmh, Dir:%0.0f deg.",
                            tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees), 60 , PRIVATE);
-}
+}*/
 
-int publishToMQTT(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
+int publishToMQTT(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float averageWind, float minWind, float maxWind, int windDegrees)
 {
   int publish_successes = 0;
 
-  //client.publish returns 0 if failed, 1 if success
+  //client.publish returns 0 if failed, >=1 if success
   publish_successes += client.publish("enviro/temperature",String(tempC));
   publish_successes += client.publish("enviro/pressure",String(pressureKPa));
   publish_successes += client.publish("enviro/windKMH",String(windKMH));
-  publish_successes += client.publish("enviro/windGust",String(gustKMH));
+  publish_successes += client.publish("enviro/windAverage",String(averageWind));
+  publish_successes += client.publish("enviro/windMin",String(minWind));
+  publish_successes += client.publish("enviro/windMax",String(maxWind));
   publish_successes += client.publish("enviro/windAngle",String(windDegrees));
   publish_successes += client.publish("enviro/rainMillimeters",String(rainMillimeters));
   publish_successes += client.publish("enviro/humidity",String(humidityRH));
 
   return publish_successes;
-}
-
-void publishToSerial(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
-{
-  Serial.print("Wind: "); Serial.println(windKMH);
-  Serial.print("Gust: "); Serial.println(gustKMH);
-  Serial.print("Dir: "); Serial.println(windDegrees);
-  Serial.print("Temp: "); Serial.println(tempC);
-  Serial.print("Humidity: "); Serial.println(humidityRH);
-  Serial.print("Pressure: "); Serial.println(pressureKPa);
-  Serial.print("Rainfall: "); Serial.println(rainMillimeters);
 }
 
 //===========================================================
@@ -311,7 +302,6 @@ float AnemometerScaleKMH = 2.4011; // Metric equiv of above
 
 volatile unsigned int AnemoneterPeriodTotal         = 0;
 volatile unsigned int AnemoneterPeriodReadingCount  = 0;
-volatile unsigned int GustPeriod                    = UINT_MAX;
 unsigned int          lastAnemoneterEvent           = 0;
 
 void initializeAnemometer()
@@ -320,7 +310,6 @@ void initializeAnemometer()
 
  AnemoneterPeriodTotal = 0;
  AnemoneterPeriodReadingCount = 0;
- GustPeriod = UINT_MAX;  //  The shortest period (and therefore fastest gust) observed
  lastAnemoneterEvent = 0;
 
  attachInterrupt( AnemometerPin, handleAnemometerEvent, FALLING );
@@ -345,12 +334,6 @@ void handleAnemometerEvent()
          return;
        }
 
-       if(period < GustPeriod)
-       {
-           // If the period is the shortest (and therefore fastest windspeed) seen, capture it
-           GustPeriod = period;
-       }
-
        AnemoneterPeriodTotal += period;
        AnemoneterPeriodReadingCount++;
    }
@@ -358,11 +341,10 @@ void handleAnemometerEvent()
    lastAnemoneterEvent = timeAnemometerEvent; // set up for next event
 }
 
-float getAndResetAnemometerKMH(float * gustKMH)
+float getAndResetAnemometerKMH()
 {
    if( AnemoneterPeriodReadingCount == 0 )
    {
-       *gustKMH = 0.0;
        return 0;
    }
 
@@ -372,8 +354,6 @@ float getAndResetAnemometerKMH(float * gustKMH)
    float result = AnemometerScaleKMH * 1000.0 * float( AnemoneterPeriodReadingCount ) / float( AnemoneterPeriodTotal );
    AnemoneterPeriodTotal = 0;
    AnemoneterPeriodReadingCount = 0;
-   *gustKMH = AnemometerScaleKMH  * 1000.0 / float( GustPeriod );
-   GustPeriod = UINT_MAX;
 
    return result;
 }
