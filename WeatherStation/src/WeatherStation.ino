@@ -56,7 +56,7 @@ void setup()
   // publish/subscribe
   if (client.isConnected())
   {
-      client.publish("debug/weatherstation","Starting Up");
+    client.publish("debug/weatherstation","Starting Up");
   }
 
    //setup the sensing and calculation functions
@@ -72,52 +72,53 @@ void setup()
 
 void loop()
 {
-   // Sample sensors that need to be polled (temp, humidity, pressure, wind vane)
-   // The rain and wind speed sensors use interrupts to catch reed switch closures
-   if( timeNextSensorReading <= millis() )
-   {
-       captureTempHumidityPressure();
-       captureWindVane();
+  processRainEvents();  //handle rain
 
-       // Schedule the next sensor reading
-       timeNextSensorReading = millis() + SENSOR_SAMPLE_TIME_MS;
-   }
+  // Sample sensors that need to be polled (temp, humidity, pressure, wind vane)
+  // The rain and wind speed sensors use interrupts to catch reed switch closures
+  if( timeNextSensorReading <= millis() )
+  {
+     captureTempHumidityPressure();
+     captureWindVane();
 
-   // Publish the data collected to MQTT
-   if( timeNextPublish <= millis() )
-   {
-       // Get the data to be published
-       float tempC        = getAndResetTempC();
-       float humidityRH   = getAndResetHumidityRH();
-       float pressureKPa  = (getAndResetPressurePascals() / 100.0) + 5.4;
+     // Schedule the next sensor reading
+     timeNextSensorReading = millis() + SENSOR_SAMPLE_TIME_MS;
+  }
 
-       float rainMillimeters = getAndResetRainMillimeters();
+  // Publish the data collected to MQTT
+  if( timeNextPublish <= millis() )
+  {
+     // Get the data to be published
+     float tempC        = getAndResetTempC();
+     float humidityRH   = getAndResetHumidityRH();
+     float pressureKPa  = (getAndResetPressurePascals() / 100.0) + 5.4;
 
-       float windKMH      = getAndResetAnemometerKMH();
-       windBuffer.add(windKMH); //add the latest reading to the buffer
-       float averageWind   = windBuffer.getAverage();
-       float minWind      = windBuffer.getLowest();
-       float maxWind      = windBuffer.getHighest();
+     float rainMillimeters = getAndResetRainMillimeters();
 
-       int windDegrees  = getAndResetWindVaneDegrees();
+     float windKMH      = getAndResetAnemometerKMH();
+     windBuffer.add(windKMH); //add the latest reading to the buffer
+     float averageWind   = windBuffer.getAverage();
+     float minWind      = windBuffer.getLowest();
+     float maxWind      = windBuffer.getHighest();
 
-       //publishToParticle( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
-       publishToMQTT( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, averageWind, minWind, maxWind, windDegrees);
+     int windDegrees  = getAndResetWindVaneDegrees();
 
-       // Schedule the next publish event
-       timeNextPublish = millis() + PUBLISH_RATE_MS;
-   }
+     //publishToParticle( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
+     publishToMQTT( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, averageWind, minWind, maxWind, windDegrees);
 
-   //connect to network
-     if ( client.isConnected() )
-     {
-         client.loop();
-     }
-     else
-     {
-         client.connect("weatherstation");
-     }
+     // Schedule the next publish event
+     timeNextPublish = millis() + PUBLISH_RATE_MS;
+  }
 
+  //connect to network
+  if( client.isConnected() )
+  {
+    client.loop();
+  }
+  else
+  {
+    client.connect("weatherstation");
+  }
 }
 
 /*void publishToParticle(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float gustKMH, float windDegrees)
@@ -253,28 +254,85 @@ float getAndResetPressurePascals()
 //===========================================================================
 int RainPin = D2;
 
+//interrupt edge counting
 volatile unsigned int rainEventCount;
 unsigned int          lastRainEvent;
+
+//track the times when we have rising and falling edges, validate closure timing
+unsigned int          timeTipStart;
+unsigned int          timeTipStop;
+unsigned int          validatedRainEvents;
+int                   rainMinEventDuration = 25;  //msec of low time for valid pulse
+int                   rainMaxEventDuration = 300;  //msec of low time for valid pulse
+
+//unit conversions per valid pulse
 float                 RainScaleInches = 0.022; // Datasheet: Pulse = .011 inches of rain
 float                 RainScaleMillimeters = 0.5588; // From imperial value
 
 void initializeRainGauge()
 {
- pinMode( RainPin, INPUT_PULLUP );
+  pinMode( RainPin, INPUT_PULLUP );
 
- rainEventCount = 0;
- lastRainEvent = 0;
- attachInterrupt( RainPin, handleRainEvent, FALLING );
+  rainEventCount = 0;
+  lastRainEvent = 0;
 
- return;
- }
+  timeTipStart = 0;
+  timeTipStop = 0;
+  validatedRainEvents = 0;
 
-void handleRainEvent() {
-   // Count rain gauge bucket tips as they occur
+  attachInterrupt( RainPin, handleRainEvent, CHANGE );
+
+  return;
+}
+
+void processRainEvents()
+{
+  //we get a count of debounced rain edges which can be either rising or falling
+  //if this count is non-zero, there is a valid (unknown polarity edge) we need to catch
+  if( rainEventCount > 0 )
+  {
+    rainEventCount = 0; //reset the edge counter
+    int bucketNotTipped = digitalRead(RainPin); //check reed state. Goes low when tipping
+
+    if( bucketNotTipped ) //we are in an 'idle switch' state and probably saw a rising edge
+    {
+      if( timeTipStart != 0 ) //we've seen a falling edge already
+      {
+        timeTipStop = millis();
+      }
+    }
+    else  //bucket is in the process of being tipped, saw a falling edge(s)
+    {
+      if( timeTipStart == 0)  //first time we've seen it low
+      {
+        timeTipStart = millis();
+        timeTipStop = 0;
+      }
+    }
+  }
+
+  //we've seen a falling and rising edge, and the falling is older than rising
+  if( timeTipStop != 0 && timeTipStop > timeTipStart )
+  {
+    unsigned int edgeWidth = timeTipStop - timeTipStart;
+
+    if( edgeWidth >= rainMinEventDuration && edgeWidth <= rainMaxEventDuration )
+    {
+      validatedRainEvents++;  //increase valid rain switch closures count
+    }
+
+    timeTipStart  = 0;  //zero the width timing vars
+    timeTipStop   = 0;
+  }
+}
+
+void handleRainEvent()
+{
    unsigned int timeRainEvent = millis(); // grab current time
 
-   // debounce <10mS readings
-   if( timeRainEvent - lastRainEvent < 85 ) {
+   // debounce 5ms for rapid repeated edges such as ringing with long cables
+   if( timeRainEvent - lastRainEvent < 5 )
+   {
      return;
    }
 
@@ -284,8 +342,8 @@ void handleRainEvent() {
 
 float getAndResetRainMillimeters()
 {
-   float result = RainScaleMillimeters * float( rainEventCount );
-   rainEventCount = 0;
+   float result = RainScaleMillimeters * float( validatedRainEvents );
+   validatedRainEvents = 0;
 
    return result;
 }
