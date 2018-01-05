@@ -72,14 +72,23 @@ Uses following hardware:
 
 # WaterMonitor
 
-IN PROGRESS
-
 Sensors to monitor the status of the rain water tanks and pump system.
 With a known tank level and flow information over a daily/weekly time period it should be possible to predict time-to-empty.
 
 Measures:
 - Water level in the tank using a submerged pressure sensor.
-- Water flow from tank (TODO, find a suitable flow meter that isn't plastic).
+- Water flow from tank (TODO).
+
+## Tank Level
+
+Uses a $60 Aliexpress sourced 'stainless' 4-20mA pressure sensor, a particle photon and a ADS1115 ADC breakout from adafruit as these were just spares I had on hand. The particle and ADC are powered with a small pololu 500mA 5V SMPS which was spare.
+
+Threw a couple of 100uF electro's on the supplies for stability, and put it in a waterproof box for outdoor use with an old phone charger to supply 12ish volts.
+
+A gland was used to draw the pressure sensor's cable from the tank.
+
+Because the sensor is a 4-20mA loop device, I use the ADC in differential mode across a 220R resistor wit
+
 
 Eventually I'd like to add the ability to switch the feed valve from the rain collection sump to allow user controllable bypass of the tanks, so the first few mm of rain are purged and we don't put the accumulated dirt from the roof into the tanks. After manual implementation, may consider doing this automatically or semi-autonomously based on rain data.
 
