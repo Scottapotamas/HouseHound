@@ -3,10 +3,10 @@
 #include "RunningMedian.h"
 
 #define LONG_TERM_AVERAGE_M 1
-#define LONG_TERM_BUFFER_SIZE ((LONG_TERM_AVERAGE_M*60)/(SENSOR_SAMPLE_TIME_MS*1000)) //sample pubs (sec) into longterm period (min to seconds)
+#define LONG_TERM_BUFFER_SIZE ((LONG_TERM_AVERAGE_M*60)*(SENSOR_SAMPLE_TIME_MS/1000)) //sample pubs (sec) into longterm period (min to seconds)
 
 #define SENSOR_SAMPLE_TIME_MS 250
-#define PUBLISH_RATE_S 5
+#define PUBLISH_RATE_S 10
 #define PUBLISH_RATE_MS (PUBLISH_RATE_S*1000) //seconds into msec
 
 // Timers to maintain sampling and publish throttles
