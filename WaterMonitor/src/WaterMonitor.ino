@@ -2,10 +2,12 @@
 #include "MQTT.h"
 #include "RunningMedian.h"
 
-#define LONG_TERM_AVERAGE_M 1
-#define LONG_TERM_BUFFER_SIZE ((LONG_TERM_AVERAGE_M*60)*(SENSOR_SAMPLE_TIME_MS/1000)) //sample pubs (sec) into longterm period (min to seconds)
+#define LONG_TERM_AVERAGE_M 2
+#define LONG_TERM_BUFFER_SIZE ((LONG_TERM_AVERAGE_M*60)*SENSOR_SAMPLE_PER_SECOND)
 
-#define SENSOR_SAMPLE_TIME_MS 250
+#define SENSOR_SAMPLE_PER_SECOND 2
+#define SENSOR_SAMPLE_TIME_MS (1000/SENSOR_SAMPLE_PER_SECOND)
+
 #define PUBLISH_RATE_S 10
 #define PUBLISH_RATE_MS (PUBLISH_RATE_S*1000) //seconds into msec
 
@@ -15,7 +17,7 @@ unsigned int timeNextPublish;
 
 Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
 
-RunningMedian ADCBuffer = RunningMedian(LONG_TERM_BUFFER_SIZE);
+RunningMedian HeightBuffer = RunningMedian(LONG_TERM_BUFFER_SIZE);
 
 void callback(char* topic, byte* payload, unsigned int length);
 
@@ -97,13 +99,12 @@ void sampleLevel()
   short adc0_1 = ads.readADC_Differential_0_1();
   double av0_1 = adc0_1 * multiplier;
 
-  ADCBuffer.add(av0_1); //add the latest value to the buffer
+  HeightBuffer.add( convert_voltage_to_depth( av0_1 ) ); //add the latest value to the buffer
 }
 
 float getHeight()
 {
-  float result = ADCBuffer.getAverage();  //get the long term average
-  result = convert_voltage_to_depth( result );  //convert the averaged ADC readings into height in mm
+  float result = HeightBuffer.getAverage();  //get the long term average
 
   return result;
 }
