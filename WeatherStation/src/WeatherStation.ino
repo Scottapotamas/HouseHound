@@ -18,7 +18,7 @@
 #define PUBLISH_RATE_MS (PUBLISH_RATE_S*1000) //seconds into msec
 
 #define LONG_TERM_AVERAGE_M 5
-#define LONG_TERM_BUFFER_SIZE ((LONG_TERM_AVERAGE_M*60)/PUBLISH_RATE_S) //sample pubs (sec) into longterm period (min to seconds)
+#define LONG_TERM_BUFFER_SIZE ((LONG_TERM_AVERAGE_M*60)/(PUBLISH_RATE_MS/1000)) //sample counts needed over longterm period (min to seconds)
 
 // Timers to maintain sampling and publish throttles
 unsigned int timeNextSensorReading;
