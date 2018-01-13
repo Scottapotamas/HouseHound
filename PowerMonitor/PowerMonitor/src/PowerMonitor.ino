@@ -45,8 +45,8 @@
 #define UgainA    0x61     //A Voltage rms Gain
 #define IgainA    0x62     //A Line Current rms Gain
 #define UgainB    0x65     //B Voltage rms Gain
-#define UgainC    0x69     //C Voltage rms Gain
 #define IgainB    0x66     //B Line Current rms Gain
+#define UgainC    0x69     //C Voltage rms Gain
 #define IgainC    0x6A     //C Line Current rms Gain
 #define UoffsetA  0x63     //Voltage Offset
 #define UoffsetB  0x67     //Voltage Offset
@@ -161,7 +161,7 @@ void loop()
   if( timeNextPublish <= millis() )
   {
      // Publish the data
-     publishToMQTT(get_averaged_voltageA(),
+     publishToMQTT( get_averaged_voltageA(),
                     get_averaged_voltageB(),
                     get_averaged_voltageC(),
                     get_averaged_currentA(),
@@ -258,8 +258,8 @@ void checkStatus()
 // Line Voltages
 //===========================================================
 
-double voltageA_total,voltageB_total,voltageC_total = 0;
-int voltageA_count,voltageB_count,voltageC_count = 0;
+double voltageA_total, voltageB_total, voltageC_total = 0;
+int voltageA_count, voltageB_count, voltageC_count    = 0;
 
 void captureVoltages()
 {
@@ -269,19 +269,19 @@ void captureVoltages()
   voltageB = GetLineVoltageB();
   voltageC = GetLineVoltageC();
 
-  if( voltageA > 0 && voltageA < 100 )
+  if( voltageA > 0 && voltageA < 300 )
   {
     voltageA_total += voltageA;
     voltageA_count++;
   }
 
-  if( voltageB > 0 && voltageB < 100 )
+  if( voltageB > 0 && voltageB < 300 )
   {
     voltageB_total += voltageB;
     voltageB_count++;
   }
 
-  if( voltageC > 0 && voltageC < 100 )
+  if( voltageC > 0 && voltageC < 300 )
   {
     voltageC_total += voltageC;
     voltageC_count++;
@@ -290,8 +290,8 @@ void captureVoltages()
 
 float get_averaged_voltageA()
 {
-  float result = voltageB_count / (float)voltageA_count;
-  voltageB_count = 0;
+  float result = voltageA_total / (float)voltageA_count;
+  voltageA_total = 0;
   voltageA_count = 0;
   return result;
 }
@@ -381,30 +381,30 @@ void capturePowers()
 {
   float powerA, powerB, powerC, powerT;
 
-  powerA = GetActivePowerA();
-  powerB = GetActivePowerB();
-  powerC = GetActivePowerC();
-  powerT = GetActivePowerT();
+  powerA = GetLineVoltageB() * GetLineCurrentA(); //GetActivePowerA();
+  powerB = GetLineVoltageB() * GetLineCurrentB(); //GetActivePowerB();
+  powerC = GetLineVoltageC() * GetLineCurrentC(); //GetActivePowerC();
+  powerT = powerA + powerB + powerC; //GetActivePowerT();
 
-  if( powerA > 0 && powerA < 100 )
+  if( powerA > 0 )
   {
     powerA_total += powerA;
     powerA_count++;
   }
 
-  if( powerB > 0 && powerB < 100 )
+  if( powerB > 0 )
   {
     powerB_total += powerB;
     powerB_count++;
   }
 
-  if( powerC > 0 && powerC < 100 )
+  if( powerC > 0 )
   {
     powerC_total += powerC;
     powerC_count++;
   }
 
-  if( powerT > 0 && powerT < 100 )
+  if( powerT > 0 )
   {
     powerT_total += powerT;
     powerT_count++;
@@ -455,7 +455,7 @@ void captureOther()
   float freq, pf;
 
   freq = GetFrequency();
-  pf = GetPowerFactor();
+  pf   = GetPowerFactor();
 
   //Include frequency reading if within bounds
   if( freq > 0 && freq < 100 )
@@ -465,7 +465,7 @@ void captureOther()
   }
 
   //Include power factor reading if within bounds
-  if( pf > 0 && pf < 1 )
+  if( pf > 0 && pf < 1.001 )
   {
     pf_total += pf;
     pf_count++;
@@ -547,21 +547,19 @@ void InitEnergyIC()
   CommEnergyIC(0, AdjStart, 0x5678); //Measurement calibration startup command, registers 61-6F
 
   CommEnergyIC(0, UgainA, 0xD8E9);  //A SVoltage rms gain
-  CommEnergyIC(0, UoffsetA, 0x0000); //A Voltage offset
   CommEnergyIC(0, IgainA, 0x1BC9); //A line current gain
+  CommEnergyIC(0, UoffsetA, 0x0000); //A Voltage offset
   CommEnergyIC(0, IoffsetA, 0x0000); //A line current offset
-
   CommEnergyIC(0, UgainB, 0xD8E9);  //B Voltage rms gain
-  CommEnergyIC(0, UoffsetB, 0x0000); //B Voltage offset
   CommEnergyIC(0, IgainB, 0x1BC9); //B line current gain
+  CommEnergyIC(0, UoffsetB, 0x0000); //B Voltage offset
   CommEnergyIC(0, IoffsetB, 0x0000); //B line current offset
-
   CommEnergyIC(0, UgainC, 0xD8E9);  //C Voltage rms gain
-  CommEnergyIC(0, UoffsetC, 0x0000); //C Voltage offset
   CommEnergyIC(0, IgainC, 0x1BC9); //C line current gain
+  CommEnergyIC(0, UoffsetC, 0x0000); //C Voltage offset
   CommEnergyIC(0, IoffsetC, 0x0000); //C line current offset
 
-  CommEnergyIC(0, CSThree, 0xF941); //Write CSThree, as self calculated
+  CommEnergyIC(0, CSThree, 0xA694); //Write CSThree, as self calculated
 
   Serial.print("Checksum 3:");
   Serial.println(CommEnergyIC(1, CSThree, 0x0000), HEX); //Checksum 3. Needs to be calculated based off the above values.
@@ -671,20 +669,19 @@ unsigned short CommEnergyIC(unsigned char RW, unsigned short address, unsigned s
 double GetLineVoltageA()
 {
   unsigned short voltage = CommEnergyIC(1, UrmsA, 0xFFFF);
-
-  return (double)voltage;// / 238.5;
+  return (double)voltage / 221.9;
 }
 
 double GetLineVoltageB()
 {
   unsigned short voltage = CommEnergyIC(1, UrmsB, 0xFFFF);
-  return (double)voltage;// / 238.5;
+  return (double)voltage / 221.9;
 }
 
 double GetLineVoltageC()
 {
   unsigned short voltage = CommEnergyIC(1, UrmsC, 0xFFFF);
-  return (double)voltage;// / 238.5;
+  return (double)voltage / 221.9;
 }
 
 unsigned short GetMeterStatus0()
@@ -699,19 +696,19 @@ unsigned short GetMeterStatus1()
 double GetLineCurrentA()
 {
   unsigned short current = CommEnergyIC(1, IrmsA, 0xFFFF);
-  return (double)current * 7.13 / 1000;
+  return (double)current * 4.4 / 1000;
 }
 
 double GetLineCurrentB()
 {
   unsigned short current = CommEnergyIC(1, IrmsB, 0xFFFF);
-  return (double)current * 7.13 / 1000;
+  return (double)current * 4.4 / 1000;
 }
 
 double GetLineCurrentC()
 {
   unsigned short current = CommEnergyIC(1, IrmsC, 0xFFFF);
-  return (double)current * 7.13 / 1000;
+  return (double)current * 4.4 / 1000;
 }
 
 double GetActivePowerA()
