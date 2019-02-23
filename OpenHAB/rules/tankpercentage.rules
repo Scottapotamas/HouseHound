@@ -1,0 +1,14 @@
+rule "Calculate tank percentage"
+when
+	Item TankMillimeters changed or
+	Time cron "0 0 0 * * ?" or
+	System started
+then
+    val Number lastHeight = TankMillimeters.state as DecimalType
+    val percentage = (lastHeight - 0) * (100 - 0) / (2100 - 0) + 0
+
+	if( percentage != null) 
+	{
+		postUpdate(TankPercentage, percentage)
+	}
+end

@@ -1,0 +1,24 @@
+rule "Increment Consumption Tally"
+    when
+        Item PowerT received update or
+        System started
+    then    
+        var Number drawSum = PowerT.sumSince(now.withTimeAtStartOfDay) as Number
+        var consumekW = drawSum / 60 / 1000
+
+        if( consumekW != null) 
+        {
+            postUpdate(PowerConsumptionDay, consumekW)
+        }
+end
+
+rule "Log day's power usage at midnight"
+    when
+        Time cron "0 0 0 * * ?"
+    then    
+        var Number drawSum = PowerT.sumSince(now.minusDays(1)) as Number
+        var consumekW = drawSum / 60 / 1000
+
+        postUpdate(DayConsumedkW, consumekW)
+end
+

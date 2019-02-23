@@ -1,0 +1,25 @@
+rule "Set daily max and min temperature"
+when
+	Item TemperatureOutdoor changed or
+	Time cron "0 0 0 * * ?" or
+	System started
+then
+	val max = TemperatureOutdoor.maximumSince(now.withTimeAtStartOfDay)
+	val min = TemperatureOutdoor.minimumSince(now.withTimeAtStartOfDay)
+	if( max != null && min != null) {
+		postUpdate(OutdoorTempMax, max.state)
+		postUpdate(OutdoorTempMin, min.state)
+	}
+end
+
+rule "Check Max Daily Windspeed"
+when
+	Item WindMax changed or
+	Time cron "0 0 0 * * ?" or
+	System started
+then
+	val windmax = WindMax.maximumSince(now.withTimeAtStartOfDay)
+	if( windmax != null ) {
+		postUpdate(WindMaxToday, windmax.state)
+	}
+end

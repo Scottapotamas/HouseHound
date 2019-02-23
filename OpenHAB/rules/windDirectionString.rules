@@ -1,0 +1,27 @@
+rule "Convert wind angle to heading"
+when
+    Item WindAngle changed
+then
+    val Number value = WindAngle.state as DecimalType
+    var String str = "ERROR"
+
+    if(value < 191.25 && value >= 168.75) str = "S"
+    else if(value < 213.75 && value >= 191.25) str = "SSW"
+    else if(value < 236.25 && value >= 213.75) str = "SW"
+    else if(value < 258.75 && value >= 236.25) str = "WSW"
+    else if(value < 281.25 && value >= 258.75) str = "W"
+    else if(value < 303.75 && value >= 281.25) str = "WNW"
+    else if(value < 326.25 && value >= 303.75) str = "NW"
+    else if(value < 348.75 && value >= 326.25) str = "NNW"
+    else if(value < 361 && value >= 348.75) str = "N"
+    else if(value < 11.25 && value >= 0) str = "N"
+    else if(value < 33.75 && value >= 11.25) str = "NNE"
+    else if(value < 56.25 && value >= 33.75) str = "NE"
+    else if(value < 78.75 && value >= 56.25) str = "ENE"
+    else if(value < 101.25 && value >= 78.75) str = "E"
+    else if(value < 123.75 && value >= 101.25) str = "ESE"
+    else if(value < 146.25 && value >= 123.75) str = "SE"
+    else if(value < 168.75 && value >= 146.25) str = "SSE"
+
+    WindHeading.sendCommand(str)
+end

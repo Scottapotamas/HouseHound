@@ -1,0 +1,104 @@
+sitemap home label="St Peters"
+{
+    Frame label="Weather"
+    {
+      Text item=TemperatureIndoor valuecolor=[>25="orange",>15="green",<=15="blue"]
+      {
+        Text item=TemperatureIndoor valuecolor=[>25="orange",>15="green",<=15="blue"]
+        Text item=TemperatureOutdoor valuecolor=[>25="orange",>15="green",<=15="blue"]
+        Text item=Temperature valuecolor=[>25="orange",>15="green",<=15="blue"]
+
+        Chart item=gTemp service="mysql" period=d refresh=50000
+
+      }
+
+      Text item=HumidityIndoor valuecolor=[<15="orange",>15="green",<=85="blue"]
+      {
+        Text item=HumidityIndoor valuecolor=[>25="orange",>15="green",<=15="blue"]
+        Text item=HumidityOutdoor valuecolor=[>25="orange",>15="green",<=15="blue"]
+        Text item=Humidity valuecolor=[>25="orange",>15="green",<=15="blue"]
+
+        Chart item=gHumidity service="mysql" period=d refresh=50000
+      }
+
+      Text item=Pressure
+      {
+        Text item=Pressure
+        Chart item=Pressure service="mysql" period=d refresh=50000
+      }
+
+      Text item=RainTotal
+      {
+        Text item=RainTotal
+        Text item=RainTotal_Time
+        Chart item=RainTotal service="mysql" period=w refresh=50000
+      }
+
+      Text item=WindSpeed
+      {
+        Text item=WindSpeed
+        Text item=WindAngle
+        Text item=WindGust
+
+        Chart item=WindSpeed service="mysql" period=8h refresh=50000
+        Chart item=WindAngle service="mysql" period=4h refresh=50000
+      }
+    }
+
+    Frame label="Power"
+    {
+      Text item=PowerT label="Consumption"
+      {
+        Text item=PowerA
+        Text item=PowerB
+        Text item=PowerC
+        Text item=PowerT
+
+        Chart item=PowerT service="mysql" period=h refresh=50000
+        Chart item=PowerT service="mysql" period=d refresh=50000
+      }
+
+      Text label="Detailed Power Info" icon="energy"
+      {
+    		Text item=VoltageA valuecolor=[>260="orange",>220="green",<=220="orange"]
+    		Text item=VoltageB valuecolor=[>260="orange",>220="green",<=220="orange"]
+        Text item=VoltageC valuecolor=[>260="orange",>220="green",<=220="orange"]
+        Text item=CurrentA
+        Text item=CurrentB
+        Text item=CurrentC
+        Text item=PowerFrequency valuecolor=[>52="orange",>48="green",<=48="orange"]
+        Text item=PowerFactor valuecolor=[<0.6="red",>0.6="orange",<=0.8="green"]
+
+        Chart item=gVoltage service="mysql" period=d refresh=50000
+        Chart item=gCurrent service="mysql" period=d refresh=50000
+        Chart item=gPower service="mysql" period=d refresh=50000
+
+      }
+
+    }
+
+    Frame label="Network"
+    {
+      Text item=SpeedtestSummary
+      {
+        Frame label="Last Test"
+        {
+          Text item=SpeedtestResultDown
+          Text item=SpeedtestResultUp
+          Text item=SpeedtestResultPing
+        }
+
+        Frame label="Test Data"
+        {
+          Text item=SpeedtestResultDate
+          Text item=SpeedtestRunning label="Speedtest [%s]" visibility=[SpeedtestRunning != "-"]
+          Switch item=SpeedtestRerun mappings=[ON="Start"]
+        }
+
+        Chart item=gSpeedtest service="mysql" period=w refresh=50000
+      }
+    }
+
+
+
+}

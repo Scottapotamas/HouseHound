@@ -1,0 +1,30 @@
+var Number RainIncr = 0
+
+rule "Increment Rain bucket"
+    when
+        Item RainMillimeters received update or
+        System started
+    then    
+        RainIncr = RainMillimeters.sumSince(now.withTimeAtStartOfDay)
+        RainTotal.postUpdate(RainIncr.toString)
+        postUpdate(RainTotal_Time, new DateTimeType())
+end
+
+rule "Reset Rain Total at Midnight"
+    when
+        Time cron "0 0 0 * * ?"
+    then    
+        postUpdate(RainTotal, 0.0)
+end
+
+rule "Manage weekly rainfall total"
+    when
+        Item RainMillimeters changed or
+        Time cron "0 0 0 * * ?" or
+        System started
+    then    
+    val weekRain = RainMillimeters.sumSince(now.minusDays(7))
+    if( weekRain != null ) {
+        postUpdate(RainTotalWeek, weekRain)
+    }
+end
