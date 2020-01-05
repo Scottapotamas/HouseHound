@@ -12,6 +12,7 @@
 #include <math.h>
 #include <RunningMedian.h>
 #include "MQTT.h"
+#include "SparkFun_AS3935.h"
 
 #define SENSOR_SAMPLE_TIME_MS 500
 #define PUBLISH_RATE_S 5
@@ -64,6 +65,7 @@ void setup()
    initializeRainGauge();
    initializeAnemometer();
    initializeWindVane();
+   initializeLightning();
 
    // Schedule the next sensor reading and publish events
    timeNextSensorReading  = millis() + SENSOR_SAMPLE_TIME_MS;
@@ -103,8 +105,12 @@ void loop()
 
      int windDegrees  = getAndResetWindVaneDegrees();
 
+     int strikes = getAndResetLightningStrikes();
+     int est_distance = getAndResetLightningDistance();
+     int est_intensity = getAndResetLightningIntensity();
+
      //publishToParticle( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
-     publishToMQTT( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, averageWind, minWind, maxWind, windDegrees);
+     publishToMQTT( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, averageWind, minWind, maxWind, windDegrees, strikes, est_distance, est_intensity);
 
      // Schedule the next publish event
      timeNextPublish = millis() + PUBLISH_RATE_MS;
@@ -128,7 +134,7 @@ void loop()
                            tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees), 60 , PRIVATE);
 }*/
 
-int publishToMQTT(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float averageWind, float minWind, float maxWind, int windDegrees)
+int publishToMQTT(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float averageWind, float minWind, float maxWind, int windDegrees, int lightningStrikes, int lightningDistance, int lightningEnergy )
 {
   int publish_successes = 0;
 
@@ -142,6 +148,9 @@ int publishToMQTT(float tempC, float humidityRH, float pressureKPa, float rainMi
   publish_successes += client.publish("enviro/windAngle",String(windDegrees));
   publish_successes += client.publish("enviro/rainMillimeters",String(rainMillimeters));
   publish_successes += client.publish("enviro/humidity",String(humidityRH));
+  publish_successes += client.publish("enviro/lightningStrikes",String(lightningStrikes));
+  publish_successes += client.publish("enviro/lightningDistance",String(lightningDistance));
+  publish_successes += client.publish("enviro/lightningIntensity",String(lightningEnergy));
 
   return publish_successes;
 }
@@ -184,7 +193,7 @@ void captureTempHumidityPressure()
   float pressurePascals = sensor.readPressure();
 
   //Include humidity reading in running mean if within reasonable bounds
-  if( humidityRH > 0 && humidityRH < 105 ) // Supersaturation humidity levels over 100% are possible
+  if( humidityRH > 0 && humidityRH < 110 ) // Supersaturation humidity levels over 100% are possible
   {
     humidityRHTotal += humidityRH;
     humidityRHReadingCount++;
@@ -502,6 +511,130 @@ float lookupRadiansFromRaw(unsigned int analogRaw)
 
    if(analogRaw > 4000) return(-1);     // Open circuit?  Probably means the sensor is not connected
 
-   Particle.publish("error", String::format("Got %d from Windvane.", analogRaw), 60 , PRIVATE);
+  //  Particle.publish("error", String::format("Got %d from Windvane.", analogRaw), 60 , PRIVATE);
    return -1;
+}
+
+
+//===========================================================
+// Lightning Detector
+//===========================================================
+
+#define AS3935_ADDR 0x03
+#define AS3935_INDOOR_MODE 0x12
+#define AS3935_OUTDOOR_MODE 0xE
+#define AS3935_LIGHTNING_INT 0x08
+#define AS3935_DISTURBER_INT 0x04
+#define AS3935_NOISE_INT 0x01
+
+int as3935_int_pin = D4;
+
+// Configuration values
+uint8_t as3935_noise_floor = 2;
+uint8_t as3935_watchdog = 2;
+uint8_t as3935_spike = 2;
+uint8_t as3935_lightning_thresh = 1;
+
+uint8_t as3935_int_flag = 0;
+
+uint8_t as3935_strikes = 0;
+uint8_t as3935_distance = 0;
+uint16_t as3935_energy = 0;
+
+enum {
+  INT_NOISE,
+  INT_DISTURBANCE,
+  INT_LIGHTNING,
+} LightningInterruptEvent_t;
+
+SparkFun_AS3935 lightning(AS3935_ADDR);
+
+void initializeLightning()
+{
+  pinMode( as3935_int_pin, INPUT );
+
+  if( !lightning.begin() )
+  {
+    // Report error
+    Particle.publish("error", String::format("Couldn't start AS3935 lightning detector"), 60 , PRIVATE);
+  }
+
+  attachInterrupt( as3935_int_pin, handlLightningEvent, RISING );
+
+  // Don't interrupt on artificial strikes
+  lightning.maskDisturber(true);
+
+  // Get indoor/outdoor modes
+  //int enviVal = lightning.readIndoorOutdoor();
+
+  // Set noise floor from 1-7 lowest-highest. Default 2
+  lightning.setNoiseLevel(as3935_noise_floor);
+
+  // Set watchdog value between 1-10 lowest-highest. Default 2
+  lightning.watchdogThreshold(as3935_watchdog);
+
+  // Spike rejection from 1-11, lowest-highest. Default 2.
+  // Value represents shape validation routine. See datasheet.
+  lightning.spikeRejection(as3935_spike);
+
+  // Lightning interrupt based on number of detected strikes
+  // Default is 1, Takes 1, 5, 9, 16
+  lightning.lightningThreshold(as3935_lightning_thresh);
+
+}
+
+int getAndResetLightningStrikes()
+{
+  int strike_count = as3935_strikes;
+  as3935_strikes = 0;
+
+  return strike_count;
+}
+
+int getAndResetLightningDistance()
+{
+  int strike_distance = as3935_distance;
+  as3935_distance = 0;
+
+  return strike_distance;
+}
+
+int getAndResetLightningIntensity()
+{
+  int strike_intensity = as3935_energy;
+  as3935_energy = 0;
+
+  return strike_intensity;
+}
+
+void handlLightningEvent()
+{
+  // Got an interrupt from the lightning detector, identify the cause
+  as3935_int_flag = lightning.readInterruptReg();
+
+  switch( as3935_int_flag )
+  {
+    case INT_NOISE:
+      // Discard
+    break;
+
+    case INT_DISTURBANCE:
+      // Discard
+    break;
+
+    case INT_LIGHTNING:
+      // Count this latest strike
+      as3935_strikes += as3935_lightning_thresh;
+
+      // Calculated distance to the storm, IC calculates based on 15-minute observation window
+      as3935_distance = lightning.distanceToStorm();
+
+      // Unitless intensity value
+      as3935_energy = lightning.lightningEnergy();
+    break;
+
+    default:
+      //wut
+      break;
+  }
 }
