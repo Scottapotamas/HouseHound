@@ -14,16 +14,28 @@
 #include "MQTT.h"
 #include "SparkFun_AS3935.h"
 
-#define SENSOR_SAMPLE_TIME_MS 500
-#define PUBLISH_RATE_S 5
-#define PUBLISH_RATE_MS (PUBLISH_RATE_S*1000) //seconds into msec
+#define SENSOR_SAMPLE_TIME_MS 500 // poll sensors internally every X milliseconds
+
+#define PUBLISH_RATE_TEMP_S 17        // Publish sensor data at the broker every X seconds
+#define PUBLISH_RATE_WIND_S 5
+#define PUBLISH_RATE_RAIN_S 22
+#define PUBLISH_RATE_LIGHTNING_S 8
+
+#define PUBLISH_RATE_TEMP_MS (PUBLISH_RATE_TEMP_S*1000)       //seconds into msec
+#define PUBLISH_RATE_WIND_MS (PUBLISH_RATE_WIND_S*1000)
+#define PUBLISH_RATE_RAIN_MS (PUBLISH_RATE_RAIN_S*1000)
+#define PUBLISH_RATE_LIGHTNING_MS (PUBLISH_RATE_LIGHTNING_S*1000)
+
 
 #define LONG_TERM_AVERAGE_M 5
-#define LONG_TERM_BUFFER_SIZE ((LONG_TERM_AVERAGE_M*60)/(PUBLISH_RATE_MS/1000)) //sample counts needed over longterm period (min to seconds)
+#define LONG_TERM_BUFFER_SIZE ((LONG_TERM_AVERAGE_M*60)*(1000/SENSOR_SAMPLE_TIME_MS))  // (number of seconds to buffer) * (samples added per second)
 
 // Timers to maintain sampling and publish throttles
 unsigned int timeNextSensorReading;
-unsigned int timeNextPublish;
+unsigned int timeNextPublishTemp;
+unsigned int timeNextPublishWind;
+unsigned int timeNextPublishRain;
+unsigned int timeNextPublishLightning;
 
 //Manage rolling buffer of windspeeds for whisker style display of speeds
 RunningMedian windBuffer = RunningMedian(LONG_TERM_BUFFER_SIZE);
@@ -69,7 +81,11 @@ void setup()
 
    // Schedule the next sensor reading and publish events
    timeNextSensorReading  = millis() + SENSOR_SAMPLE_TIME_MS;
-   timeNextPublish        = millis() + PUBLISH_RATE_MS;
+
+   timeNextPublishTemp    = millis() + PUBLISH_RATE_TEMP_MS;
+   timeNextPublishWind    = millis() + PUBLISH_RATE_WIND_MS;
+   timeNextPublishRain    = millis() + PUBLISH_RATE_RAIN_MS;
+   timeNextPublishLightning = millis() + PUBLISH_RATE_LIGHTNING_MS;
 }
 
 void loop()
@@ -88,33 +104,7 @@ void loop()
   }
 
   // Publish the data collected to MQTT
-  if( timeNextPublish <= millis() )
-  {
-     // Get the data to be published
-     float tempC        = getAndResetTempC();
-     float humidityRH   = getAndResetHumidityRH();
-     float pressureKPa  = (getAndResetPressurePascals() / 100.0) + 5.4;
-
-     float rainMillimeters = getAndResetRainMillimeters();
-
-     float windKMH      = getAndResetAnemometerKMH();
-     windBuffer.add(windKMH); //add the latest reading to the buffer
-     float averageWind   = windBuffer.getAverage();
-     float minWind      = windBuffer.getLowest();
-     float maxWind      = windBuffer.getHighest();
-
-     int windDegrees  = getAndResetWindVaneDegrees();
-
-     int strikes = getAndResetLightningStrikes();
-     int est_distance = getAndResetLightningDistance();
-     int est_intensity = getAndResetLightningIntensity();
-
-     //publishToParticle( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees);
-     publishToMQTT( tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, averageWind, minWind, maxWind, windDegrees, strikes, est_distance, est_intensity);
-
-     // Schedule the next publish event
-     timeNextPublish = millis() + PUBLISH_RATE_MS;
-  }
+  publishData();
 
   //connect to network
   if( client.isConnected() )
@@ -134,23 +124,86 @@ void loop()
                            tempC, humidityRH, pressureKPa, rainMillimeters, windKMH, gustKMH, windDegrees), 60 , PRIVATE);
 }*/
 
-int publishToMQTT(float tempC, float humidityRH, float pressureKPa, float rainMillimeters, float windKMH, float averageWind, float minWind, float maxWind, int windDegrees, int lightningStrikes, int lightningDistance, int lightningEnergy )
+// Decide what to publish and when
+void publishData( void )
+{
+  if( timeNextPublishTemp <= millis() )
+  {
+     // Get the data to be published
+     float tempC        = getAndResetTempC();
+     float humidityRH   = getAndResetHumidityRH();
+     float pressureKPa  = (getAndResetPressurePascals() / 100.0) + 5.4;
+
+     publishToMQTTTempHumidity( tempC, humidityRH, pressureKPa );
+
+     // Schedule the next publish event
+     timeNextPublishTemp    = millis() + PUBLISH_RATE_TEMP_MS;
+  }
+
+  if( timeNextPublishWind <= millis() )
+  {
+     float windKMH = getAndResetAnemometerKMH();
+     windBuffer.add(windKMH); //add the latest reading to the buffer
+
+     publishToMQTTWind( windKMH, windBuffer.getAverage(), windBuffer.getLowest(), windBuffer.getHighest(), getAndResetWindVaneDegrees() );
+     timeNextPublishWind    = millis() + PUBLISH_RATE_WIND_MS;
+  }
+
+  if( timeNextPublishRain <= millis() )
+  {
+    publishToMQTTRain( getAndResetRainMillimeters() );
+    timeNextPublishRain    = millis() + PUBLISH_RATE_RAIN_MS;
+  }
+
+  if( timeNextPublishLightning <= millis() )
+  {
+    publishToMQTTLightning( getAndResetLightningStrikes(), getAndResetLightningDistance(), getAndResetLightningIntensity() );
+    timeNextPublishLightning    = millis() + PUBLISH_RATE_LIGHTNING_MS;
+  }
+
+}
+
+int publishToMQTTTempHumidity(float tempC, float humidityRH, float pressureKPa )
 {
   int publish_successes = 0;
 
   //client.publish returns 0 if failed, >=1 if success
-  publish_successes += client.publish("enviro/temperature",String(tempC));
-  publish_successes += client.publish("enviro/pressure",String(pressureKPa));
-  publish_successes += client.publish("enviro/windKMH",String(windKMH));
-  publish_successes += client.publish("enviro/windAverage",String(averageWind));
-  publish_successes += client.publish("enviro/windMin",String(minWind));
-  publish_successes += client.publish("enviro/windMax",String(maxWind));
-  publish_successes += client.publish("enviro/windAngle",String(windDegrees));
-  publish_successes += client.publish("enviro/rainMillimeters",String(rainMillimeters));
-  publish_successes += client.publish("enviro/humidity",String(humidityRH));
-  publish_successes += client.publish("enviro/lightningStrikes",String(lightningStrikes));
-  publish_successes += client.publish("enviro/lightningDistance",String(lightningDistance));
-  publish_successes += client.publish("enviro/lightningIntensity",String(lightningEnergy));
+  publish_successes += client.publish("enviro/temperature", String(tempC));
+  publish_successes += client.publish("enviro/pressure",    String(pressureKPa));
+  publish_successes += client.publish("enviro/humidity",    String(humidityRH));
+
+  return publish_successes;
+}
+
+int publishToMQTTWind( float windKMH, float averageWind, float minWind, float maxWind, int windDegrees )
+{
+  int publish_successes = 0;
+
+  publish_successes += client.publish("enviro/windKMH",       String(windKMH));
+  publish_successes += client.publish("enviro/windAverage",   String(averageWind));
+  publish_successes += client.publish("enviro/windMin",       String(minWind));
+  publish_successes += client.publish("enviro/windMax",       String(maxWind));
+  publish_successes += client.publish("enviro/windAngle",     String(windDegrees));
+
+  return publish_successes;
+}
+
+int publishToMQTTRain( float rainMillimeters )
+{
+  int publish_successes = 0;
+
+  publish_successes += client.publish("enviro/rainMillimeters", String(rainMillimeters));
+
+  return publish_successes;
+}
+
+int publishToMQTTLightning( int lightningStrikes, int lightningDistance, int lightningEnergy )
+{
+  int publish_successes = 0;
+
+  publish_successes += client.publish("enviro/lightningStrikes",    String(lightningStrikes));
+  publish_successes += client.publish("enviro/lightningDistance",   String(lightningDistance));
+  publish_successes += client.publish("enviro/lightningIntensity",  String(lightningEnergy));
 
   return publish_successes;
 }
